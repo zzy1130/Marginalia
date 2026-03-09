@@ -1,0 +1,22 @@
+[project]
+name = "marginalia"
+version = "0.1.0"
+description = "AI learning companion - sees your slides, answers questions, takes notes"
+requires-python = ">=3.10,<3.13"
+dependencies = [
+    "python-dotenv>=1.0.0",
+    "pyobjc-framework-Cocoa>=10.0",
+    "pyobjc-framework-Quartz>=10.0",
+    "Pillow>=10.0.0",
+    "PyMuPDF>=1.24.0",
+    "python-pptx>=0.6.23",
+    "anthropic>=0.84.0",
+    "markdown>=3.10.2",
+    "matplotlib>=3.10.8",
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.34.0",
+    "httpx>=0.28.0",
+    "opensandbox>=0.1.0",
+    "opensandbox-code-interpreter>=0.1.0",
+    "opensandbox-server>=0.1.0",
+]
