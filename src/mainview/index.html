@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Marginalia</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.4/dist/purify.min.js"></script>
+  <script src="views://mainview/index.js"></script>
+  <style>
+    :root {
+      --bg-page: #F6F4F1;
+      --bg-card: #FFFFFF;
+      --bg-sidebar: #F1EFEC;
+      --brand: #2E4226;
+      --brand-accent: #55644A;
+      --brand-light: #E0E7D0;
+      --text-primary: #1A1A1A;
+      --text-secondary: #666666;
+      --text-tertiary: #999999;
+      --text-disabled: #CCCCCC;
+      --border-light: rgba(0,0,0,0.06);
+      --border-medium: rgba(0,0,0,0.12);
+      --hover-subtle: rgba(0,0,0,0.03);
+      --error: #D42727;
+      --white: #FFFFFF;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, 'SF Pro Text', 'PingFang SC', 'Helvetica Neue', sans-serif;
+      background: var(--bg-page);
+      color: var(--text-primary);
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── Title Bar (draggable) ── */
+    .titlebar {
+      -webkit-app-region: drag;
+      height: 42px;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      padding: 0 16px 0 78px;
+      gap: 8px;
+    }
+
+    .titlebar-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--brand);
+      flex-shrink: 0;
+    }
+
+    .titlebar-text {
+      font-family: -apple-system, 'SF Pro Display', 'PingFang SC', sans-serif;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-primary);
+      letter-spacing: -0.2px;
+    }
+
+    .titlebar-spacer { flex: 1; }
+
+    .status-badge {
+      -webkit-app-region: no-drag;
+      font-size: 11px;
+      color: var(--text-tertiary);
+      background: rgba(0,0,0,0.04);
+      border-radius: 8px;
+      padding: 2px 8px;
+      white-space: nowrap;
+      transition: all 0.3s ease;
+    }
+
+    .status-badge.thinking {
+      color: var(--brand);
+      background: var(--brand-light);
+    }
+
+    .status-badge.error {
+      color: var(--error);
+      background: #FEE;
+    }
+
+    /* ── Main Content ── */
+    .content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      padding: 0 16px 16px;
+      min-height: 0;
+      gap: 6px;
+    }
+
+    /* ── Robot ── */
+    .robot-container {
+      display: flex;
+      justify-content: center;
+      padding: 2px 0;
+      flex-shrink: 0;
+    }
+
+    .robot-svg {
+      width: 130px;
+      height: 170px;
+      cursor: pointer;
+      filter: drop-shadow(0 2px 6px rgba(46,66,38,0.10));
+    }
+
+    /* --- Animations --- */
+    @keyframes breathe {
+      0%, 100% { transform: translateY(0) scale(1); }
+      50% { transform: translateY(-2.5px) scale(1.008); }
+    }
+    @keyframes bounce {
+      0%, 100% { transform: translateY(0) rotate(0); }
+      25% { transform: translateY(-7px) rotate(-2deg); }
+      75% { transform: translateY(-7px) rotate(2deg); }
+    }
+    @keyframes dot-wave {
+      0%, 100% { opacity: 0.2; transform: translateY(0) scale(0.7); }
+      50% { opacity: 1; transform: translateY(-4px) scale(1); }
+    }
+    @keyframes head-tilt {
+      0%, 100% { transform: rotate(0); }
+      30% { transform: rotate(-3deg); }
+      70% { transform: rotate(3deg); }
+    }
+    @keyframes explain-arm {
+      0%, 100% { transform: translateY(0) rotate(0); }
+      50% { transform: translateY(-4px) rotate(-10deg); }
+    }
+    @keyframes shake-error {
+      0%, 100% { transform: translateX(0); }
+      10%, 50%, 90% { transform: translateX(-3px); }
+      30%, 70% { transform: translateX(3px); }
+    }
+    @keyframes float-sparkle {
+      0% { opacity: 0; transform: translateY(0) scale(0); }
+      50% { opacity: 1; transform: translateY(-8px) scale(1); }
+      100% { opacity: 0; transform: translateY(-16px) scale(0); }
+    }
+
+    /* Base idle */
+    .robot-body {
+      animation: breathe 2.8s ease-in-out infinite;
+      transform-origin: 70px 90px;
+      transition: filter 0.3s ease;
+    }
+    .robot-svg:hover .robot-body { filter: brightness(1.04); }
+
+    /* Thinking */
+    .robot-body.thinking { animation: head-tilt 2s ease-in-out infinite; }
+    .think-dots { display: none; }
+    .robot-body.thinking .think-dots { display: block; }
+    .think-dot-1 { animation: dot-wave 1.2s ease-in-out 0s infinite; }
+    .think-dot-2 { animation: dot-wave 1.2s ease-in-out 0.2s infinite; }
+    .think-dot-3 { animation: dot-wave 1.2s ease-in-out 0.4s infinite; }
+
+    /* Happy */
+    .robot-body.happy { animation: bounce 0.6s ease-in-out infinite; }
+    .sparkles { display: none; }
+    .robot-body.happy .sparkles { display: block; }
+    .sparkle-1 { animation: float-sparkle 0.8s ease-out 0s forwards; }
+    .sparkle-2 { animation: float-sparkle 0.8s ease-out 0.15s forwards; }
+    .sparkle-3 { animation: float-sparkle 0.8s ease-out 0.3s forwards; }
+
+    /* Explaining — right arm gestures */
+    .arm-right { transition: transform 0.3s ease; transform-origin: 102px 108px; }
+    .robot-body.explaining .arm-right { animation: explain-arm 1.5s ease-in-out infinite; }
+
+    /* Listening */
+    .robot-body.listening { animation: breathe 2s ease-in-out infinite; }
+
+    /* Error */
+    .robot-body.error { animation: shake-error 0.5s ease-in-out; }
+    .robot-body.error .body-rect { fill: #FFD0D0; transition: fill 0.3s; }
+    .robot-body.error .foot { fill: #8B3A3A; transition: fill 0.3s; }
+
+    /* Eye states */
+    .eye-blink, .eye-happy, .eye-error, .eye-listening { display: none; }
+    .robot-body.blink .eye-normal { display: none; }
+    .robot-body.blink .eye-blink { display: block; }
+    .robot-body.happy .eye-normal { display: none; }
+    .robot-body.happy .eye-happy { display: block; }
+    .robot-body.error .eye-normal { display: none; }
+    .robot-body.error .eye-error { display: block; }
+    .robot-body.listening .eye-normal { display: none; }
+    .robot-body.listening .eye-listening { display: block; }
+
+    /* Mouth states */
+    .mouth-think, .mouth-happy, .mouth-error { display: none; }
+    .robot-body.thinking .mouth-normal { display: none; }
+    .robot-body.thinking .mouth-think { display: block; }
+    .robot-body.happy .mouth-normal { display: none; }
+    .robot-body.happy .mouth-happy { display: block; }
+    .robot-body.error .mouth-normal { display: none; }
+    .robot-body.error .mouth-error { display: block; }
+
+    .eye-pupil-track { transition: transform 0.15s ease-out; }
+
+    /* ── Chat Card ── */
+    .chat-card {
+      flex: 1;
+      background: var(--bg-card);
+      border: 1px solid var(--border-light);
+      border-radius: 16px;
+      box-shadow: 0 2px 24px rgba(0,0,0,0.06);
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    .chat-messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 12px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .chat-messages::-webkit-scrollbar { width: 6px; }
+    .chat-messages::-webkit-scrollbar-track { background: transparent; }
+    .chat-messages::-webkit-scrollbar-thumb {
+      background: rgba(0,0,0,0.12);
+      border-radius: 3px;
+    }
+    .chat-messages::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.22); }
+
+    .msg-welcome {
+      color: var(--text-tertiary);
+      font-size: 13px;
+      font-style: italic;
+      padding: 8px 0;
+    }
+
+    .msg-user {
+      background: var(--bg-page);
+      border-radius: 10px;
+      padding: 10px 14px;
+    }
+
+    .msg-user-label {
+      font-weight: 600;
+      color: var(--text-primary);
+      font-size: 11px;
+      letter-spacing: 0.3px;
+    }
+
+    .msg-user-text {
+      margin-top: 4px;
+      font-size: 13.5px;
+      line-height: 1.5;
+    }
+
+    .msg-bot-label {
+      font-weight: 600;
+      color: var(--brand);
+      font-size: 11px;
+      letter-spacing: 0.3px;
+      margin: 6px 0 2px;
+    }
+
+    .msg-status {
+      padding: 4px 10px;
+      background: rgba(46,66,38,0.05);
+      border-radius: 8px;
+      border-left: 3px solid var(--brand-light);
+      font-size: 11.5px;
+      color: var(--text-secondary);
+    }
+
+    .msg-bot-text {
+      padding: 6px 2px;
+      font-size: 13.5px;
+      line-height: 1.6;
+    }
+
+    .msg-bot-text strong { font-weight: 600; }
+    .msg-bot-text code {
+      background: rgba(0,0,0,0.05);
+      padding: 1px 5px;
+      border-radius: 4px;
+      font-family: Menlo, monospace;
+      font-size: 12px;
+    }
+    .msg-bot-text pre {
+      background: rgba(0,0,0,0.04);
+      padding: 10px 12px;
+      border-radius: 8px;
+      overflow-x: auto;
+      margin: 6px 0;
+    }
+    .msg-bot-text pre code { background: none; padding: 0; }
+    .msg-bot-text ul, .msg-bot-text ol { margin: 4px 0; padding-left: 20px; }
+    .msg-bot-text li { margin: 2px 0; }
+    .msg-bot-text h1, .msg-bot-text h2, .msg-bot-text h3 {
+      color: var(--brand);
+      margin: 8px 0 4px;
+    }
+    .msg-bot-text h1 { font-size: 16px; }
+    .msg-bot-text h2 { font-size: 15px; }
+    .msg-bot-text h3 { font-size: 14px; }
+    .msg-bot-text table { border-collapse: collapse; margin: 6px 0; }
+    .msg-bot-text th, .msg-bot-text td {
+      border: 1px solid rgba(0,0,0,0.1);
+      padding: 4px 8px;
+      font-size: 12px;
+    }
+    .msg-bot-text th { background: rgba(0,0,0,0.04); font-weight: 600; }
+    .msg-bot-text blockquote {
+      border-left: 3px solid var(--brand);
+      padding: 6px 12px;
+      margin: 6px 0;
+      background: rgba(46,66,38,0.04);
+      border-radius: 0 6px 6px 0;
+      color: var(--text-secondary);
+    }
+
+    .msg-error {
+      padding: 8px 12px;
+      background: #FEF2F2;
+      border-radius: 8px;
+      color: var(--error);
+      font-size: 12px;
+    }
+
+    /* ── Input Row ── */
+    .input-row {
+      display: flex;
+      gap: 8px;
+      padding: 0 12px 12px;
+      align-items: center;
+    }
+
+    .input-field {
+      flex: 1;
+      font-family: inherit;
+      font-size: 13.5px;
+      color: var(--text-primary);
+      background: var(--bg-page);
+      border: 1px solid rgba(0,0,0,0.08);
+      border-radius: 10px;
+      padding: 9px 14px;
+      outline: none;
+      transition: all 0.15s ease;
+    }
+
+    .input-field:focus {
+      border-color: var(--brand-accent);
+      background: var(--white);
+    }
+
+    .input-field::placeholder { color: var(--text-tertiary); }
+
+    .input-field:disabled {
+      background: rgba(0,0,0,0.03);
+      color: var(--text-disabled);
+    }
+
+    .send-btn {
+      width: 36px; height: 36px;
+      background: var(--brand);
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-size: 18px;
+      font-weight: 600;
+      cursor: pointer;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s ease;
+    }
+
+    .send-btn:hover { background: var(--brand-accent); transform: scale(1.05); }
+
+    .send-btn:disabled {
+      background: rgba(0,0,0,0.08);
+      color: rgba(0,0,0,0.25);
+      cursor: default;
+      transform: none;
+    }
+  </style>
+</head>
+<body>
+  <!-- Title Bar -->
+  <div class="titlebar">
+    <div class="titlebar-dot"></div>
+    <span class="titlebar-text">Marginalia</span>
+    <div class="titlebar-spacer"></div>
+    <span class="status-badge" id="statusBadge">Ready</span>
+  </div>
+
+  <div class="content">
+    <!-- Mascot -->
+    <div class="robot-container">
+      <svg class="robot-svg" viewBox="0 0 140 180" xmlns="http://www.w3.org/2000/svg">
+        <g class="robot-body" id="robotBody">
+          <!-- Cat ears -->
+          <polygon points="32,42 42,16 54,42" fill="#F5F0E8" stroke="#333" stroke-width="2" stroke-linejoin="round"/>
+          <polygon points="86,42 98,16 108,42" fill="#F5F0E8" stroke="#333" stroke-width="2" stroke-linejoin="round"/>
+          <!-- Inner ears -->
+          <polygon points="37,42 42,24 49,42" fill="#E8875A"/>
+          <polygon points="91,42 98,24 105,42" fill="#E8875A"/>
+
+          <!-- Box head -->
+          <rect x="26" y="38" width="88" height="62" rx="6" fill="#F5F0E8" stroke="#333" stroke-width="2.5"/>
+
+          <!-- Eyes (normal) — pupils track mouse -->
+          <g class="eye-normal">
+            <!-- Left eye -->
+            <circle cx="52" cy="62" r="12" fill="#fff" stroke="#333" stroke-width="2"/>
+            <circle class="eye-pupil-track" id="pupilL" cx="52" cy="64" r="5" fill="#222"/>
+            <circle class="eye-glint" cx="49" cy="60" r="2" fill="rgba(255,255,255,0.9)"/>
+            <!-- Left eyelid (half-closed, bored look) -->
+            <path d="M40,56 Q52,52 64,56" fill="#F5F0E8" stroke="#333" stroke-width="1.5"/>
+            <!-- Right eye -->
+            <circle cx="88" cy="62" r="12" fill="#fff" stroke="#333" stroke-width="2"/>
+            <circle class="eye-pupil-track" id="pupilR" cx="88" cy="64" r="5" fill="#222"/>
+            <circle class="eye-glint" cx="85" cy="60" r="2" fill="rgba(255,255,255,0.9)"/>
+            <!-- Right eyelid -->
+            <path d="M76,56 Q88,52 100,56" fill="#F5F0E8" stroke="#333" stroke-width="1.5"/>
+          </g>
+
+          <!-- Eyes (blink) -->
+          <g class="eye-blink">
+            <line x1="40" y1="63" x2="64" y2="63" stroke="#333" stroke-width="3" stroke-linecap="round"/>
+            <line x1="76" y1="63" x2="100" y2="63" stroke="#333" stroke-width="3" stroke-linecap="round"/>
+          </g>
+
+          <!-- Eyes (happy — ^ ^) -->
+          <g class="eye-happy">
+            <path d="M40,66 Q52,54 64,66" fill="none" stroke="#333" stroke-width="3" stroke-linecap="round"/>
+            <path d="M76,66 Q88,54 100,66" fill="none" stroke="#333" stroke-width="3" stroke-linecap="round"/>
+          </g>
+
+          <!-- Eyes (listening — big sparkly) -->
+          <g class="eye-listening">
+            <circle cx="52" cy="62" r="13" fill="#fff" stroke="#333" stroke-width="2"/>
+            <circle cx="52" cy="63" r="6" fill="#222"/>
+            <circle cx="49" cy="59" r="3" fill="rgba(255,255,255,0.95)"/>
+            <circle cx="55" cy="62" r="1.5" fill="rgba(255,255,255,0.7)"/>
+            <circle cx="88" cy="62" r="13" fill="#fff" stroke="#333" stroke-width="2"/>
+            <circle cx="88" cy="63" r="6" fill="#222"/>
+            <circle cx="85" cy="59" r="3" fill="rgba(255,255,255,0.95)"/>
+            <circle cx="91" cy="62" r="1.5" fill="rgba(255,255,255,0.7)"/>
+          </g>
+
+          <!-- Eyes (error — X X) -->
+          <g class="eye-error">
+            <line x1="45" y1="56" x2="59" y2="70" stroke="#D42727" stroke-width="3" stroke-linecap="round"/>
+            <line x1="59" y1="56" x2="45" y2="70" stroke="#D42727" stroke-width="3" stroke-linecap="round"/>
+            <line x1="81" y1="56" x2="95" y2="70" stroke="#D42727" stroke-width="3" stroke-linecap="round"/>
+            <line x1="95" y1="56" x2="81" y2="70" stroke="#D42727" stroke-width="3" stroke-linecap="round"/>
+          </g>
+
+          <!-- Nose -->
+          <ellipse cx="70" cy="76" rx="4" ry="3" fill="#333"/>
+
+          <!-- Whiskers -->
+          <line x1="30" y1="72" x2="50" y2="76" stroke="#333" stroke-width="1.5" stroke-linecap="round"/>
+          <line x1="28" y1="78" x2="50" y2="78" stroke="#333" stroke-width="1.5" stroke-linecap="round"/>
+          <line x1="30" y1="84" x2="50" y2="80" stroke="#333" stroke-width="1.5" stroke-linecap="round"/>
+          <line x1="110" y1="72" x2="90" y2="76" stroke="#333" stroke-width="1.5" stroke-linecap="round"/>
+          <line x1="112" y1="78" x2="90" y2="78" stroke="#333" stroke-width="1.5" stroke-linecap="round"/>
+          <line x1="110" y1="84" x2="90" y2="80" stroke="#333" stroke-width="1.5" stroke-linecap="round"/>
+
+          <!-- Mouth (normal — grumpy cat) -->
+          <path class="mouth-normal" d="M62,88 Q66,92 70,88 Q74,92 78,88" fill="none" stroke="#333" stroke-width="2" stroke-linecap="round"/>
+          <!-- Mouth (thinking — small o) -->
+          <circle class="mouth-think" cx="70" cy="88" r="4" fill="none" stroke="#333" stroke-width="2"/>
+          <!-- Mouth (happy — big grin) -->
+          <path class="mouth-happy" d="M58,86 Q64,96 70,86 Q76,96 82,86" fill="none" stroke="#333" stroke-width="2.5" stroke-linecap="round"/>
+          <!-- Mouth (error — wavy) -->
+          <path class="mouth-error" d="M60,88 C64,84 76,92 80,88" fill="none" stroke="#8B3A3A" stroke-width="2" stroke-linecap="round"/>
+
+          <!-- Body — white shirt -->
+          <rect class="body-rect" x="38" y="100" width="64" height="42" rx="6" fill="#fff" stroke="#333" stroke-width="2"/>
+          <!-- Yellow vest -->
+          <rect x="38" y="100" width="16" height="42" rx="3" fill="#F0C938" stroke="#333" stroke-width="1.5"/>
+          <rect x="86" y="100" width="16" height="42" rx="3" fill="#F0C938" stroke="#333" stroke-width="1.5"/>
+          <!-- Vest pockets -->
+          <rect x="42" y="112" width="10" height="8" rx="1.5" fill="#D4AF37" stroke="#333" stroke-width="1"/>
+          <rect x="88" y="112" width="10" height="8" rx="1.5" fill="#D4AF37" stroke="#333" stroke-width="1"/>
+          <!-- Belt -->
+          <rect x="38" y="134" width="64" height="8" rx="2" fill="#8B6E4E" stroke="#333" stroke-width="1.5"/>
+          <rect x="65" y="133" width="10" height="10" rx="2" fill="#C0C0C0" stroke="#333" stroke-width="1"/>
+
+          <!-- Left arm + toolbox -->
+          <g class="arm-left arm-fill">
+            <line x1="38" y1="108" x2="18" y2="126" stroke="#F5F0E8" stroke-width="6" stroke-linecap="round"/>
+            <line x1="38" y1="108" x2="18" y2="126" stroke="#333" stroke-width="2" stroke-linecap="round" fill="none"/>
+            <!-- Glove -->
+            <circle cx="16" cy="128" r="5" fill="#8B6E4E" stroke="#333" stroke-width="1.5"/>
+            <!-- Toolbox -->
+            <rect x="4" y="126" width="18" height="14" rx="2" fill="#B0B8C0" stroke="#333" stroke-width="1.5"/>
+            <line x1="8" y1="126" x2="20" y2="126" stroke="#333" stroke-width="2.5" stroke-linecap="round"/>
+            <rect x="10" y="122" width="8" height="5" rx="2" fill="none" stroke="#333" stroke-width="1.5"/>
+          </g>
+
+          <!-- Right arm + wrench (animated) -->
+          <g class="arm-right arm-fill">
+            <line x1="102" y1="108" x2="122" y2="120" stroke="#F5F0E8" stroke-width="6" stroke-linecap="round"/>
+            <line x1="102" y1="108" x2="122" y2="120" stroke="#333" stroke-width="2" stroke-linecap="round"/>
+            <!-- Glove -->
+            <circle cx="124" cy="122" r="5" fill="#8B6E4E" stroke="#333" stroke-width="1.5"/>
+            <!-- Wrench -->
+            <line x1="122" y1="118" x2="134" y2="104" stroke="#888" stroke-width="3.5" stroke-linecap="round"/>
+            <circle cx="135" cy="102" r="4" fill="none" stroke="#888" stroke-width="2.5"/>
+            <line x1="133" y1="100" x2="137" y2="104" stroke="#888" stroke-width="2.5" stroke-linecap="round"/>
+          </g>
+
+          <!-- Shorts -->
+          <rect x="42" y="142" width="24" height="16" rx="3" fill="#A0A8B0" stroke="#333" stroke-width="1.5"/>
+          <rect x="74" y="142" width="24" height="16" rx="3" fill="#A0A8B0" stroke="#333" stroke-width="1.5"/>
+
+          <!-- Legs -->
+          <line x1="54" y1="158" x2="54" y2="168" stroke="#F5F0E8" stroke-width="5"/>
+          <line x1="54" y1="158" x2="54" y2="168" stroke="#333" stroke-width="1.5"/>
+          <line x1="86" y1="158" x2="86" y2="168" stroke="#F5F0E8" stroke-width="5"/>
+          <line x1="86" y1="158" x2="86" y2="168" stroke="#333" stroke-width="1.5"/>
+
+          <!-- Shoes -->
+          <ellipse class="foot" cx="54" cy="172" rx="10" ry="5" fill="#8B6E4E" stroke="#333" stroke-width="1.5"/>
+          <ellipse class="foot" cx="86" cy="172" rx="10" ry="5" fill="#8B6E4E" stroke="#333" stroke-width="1.5"/>
+
+          <!-- Thinking dots -->
+          <g class="think-dots">
+            <circle class="think-dot-1" cx="118" cy="38" r="3" fill="#A0854A" opacity="0.5"/>
+            <circle class="think-dot-2" cx="126" cy="30" r="4" fill="#A0854A" opacity="0.5"/>
+            <circle class="think-dot-3" cx="135" cy="22" r="5" fill="#A0854A" opacity="0.5"/>
+          </g>
+
+          <!-- Happy sparkles -->
+          <g class="sparkles">
+            <text class="sparkle-1" x="10" y="30" font-size="14" opacity="0">✨</text>
+            <text class="sparkle-2" x="115" y="14" font-size="12" opacity="0">⭐</text>
+            <text class="sparkle-3" x="125" y="50" font-size="11" opacity="0">✨</text>
+          </g>
+        </g>
+      </svg>
+    </div>
+
+    <!-- Chat Card -->
+    <div class="chat-card">
+      <div class="chat-messages" id="chatMessages">
+        <div class="msg-welcome">Open a PDF or PPT, then ask me anything about the current page.</div>
+      </div>
+
+      <div class="input-row">
+        <input type="text" class="input-field" id="inputField"
+               placeholder="Ask about the current page..."
+               autocomplete="off" />
+        <button class="send-btn" id="sendBtn">↑</button>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
