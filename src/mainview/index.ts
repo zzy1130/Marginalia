@@ -3,7 +3,13 @@
  * Communicates with the Python backend via fetch + SSE.
  */
 
+import ElectrobunView, { Electroview } from "electrobun/view";
 import { marked } from "marked";
+
+const rpc = Electroview.defineRPC<any>({
+  handlers: { requests: {}, messages: {} },
+});
+new ElectrobunView.Electroview({ rpc });
 
 marked.setOptions({ breaks: true, gfm: true });
 
@@ -282,6 +288,42 @@ async function checkSandboxStatus() {
   } catch { /* backend not ready yet */ }
 }
 
+// --- Drag region for custom titlebar ---
+function setupDragRegion() {
+  const titlebar = document.querySelector(".titlebar") as HTMLElement | null;
+  if (!titlebar) return;
+
+  titlebar.addEventListener("mousedown", (e) => {
+    const target = e.target as HTMLElement;
+    // Don't drag if clicking on status-badge
+    if (target.closest(".status-badge")) return;
+    
+    // Try Electrobun's internal RPC
+    const winId = (window as any).__electrobunWindowId;
+    const internalBridge = (window as any).__electrobunInternalBridge;
+    
+    if (winId !== undefined && internalBridge) {
+      // Use Electrobun's internal RPC
+      internalBridge.postMessage(JSON.stringify({ 
+        type: "message", 
+        id: "startWindowMove", 
+        payload: { id: winId } 
+      }));
+    }
+  });
+
+  document.addEventListener("mouseup", () => {
+    const internalBridge = (window as any).__electrobunInternalBridge;
+    if (internalBridge) {
+      internalBridge.postMessage(JSON.stringify({ 
+        type: "message", 
+        id: "stopWindowMove", 
+        payload: {} 
+      }));
+    }
+  });
+}
+
 // --- Initialize ---
 document.addEventListener("DOMContentLoaded", () => {
   chatMessages = document.getElementById("chatMessages")!;
@@ -290,6 +332,7 @@ document.addEventListener("DOMContentLoaded", () => {
   setupBlink();
   setupRobotClick();
   checkSandboxStatus();
+  setupDragRegion();
 
   const inputField = document.getElementById("inputField") as HTMLInputElement;
 
