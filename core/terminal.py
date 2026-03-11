@@ -339,26 +339,7 @@ end tell
     elif source == "cursor":
         proc = subprocess.Popen(["pbcopy"], stdin=subprocess.PIPE)
         proc.communicate(text.encode())
-        script = '''
-tell application "Cursor"
-    activate
-end tell
-delay 0.3
-tell application "System Events"
-    tell process "Cursor"
-        key code 50 using control down
-        delay 0.3
-        keystroke "v" using command down
-        delay 0.1
-        keystroke return
-    end tell
-end tell
-'''
-        try:
-            subprocess.run(["osascript", "-e", script], capture_output=True, text=True, timeout=5)
-            return f"clipboard_ready: text copied to clipboard and paste attempted. If nothing appeared, grant Accessibility permission to Marginalia in System Settings, or manually Cmd+V in the terminal."
-        except Exception as e:
-            return f"clipboard_only: {e} — text is on clipboard, paste with Cmd+V"
+        return "clipboard"
 
     return f"unknown_source:{source}"
 

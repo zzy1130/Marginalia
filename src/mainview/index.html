@@ -460,6 +460,47 @@
     .tab-content { display: none; }
     .tab-content.active { display: flex; flex-direction: column; gap: 8px; }
 
+    .accessibility-banner {
+      display: none;
+      padding: 8px 12px;
+      background: #FFF8ED;
+      border-bottom: 1px solid #F0D9A0;
+      font-size: 11.5px;
+      color: #8B6E1F;
+      gap: 8px;
+      align-items: center;
+      flex-shrink: 0;
+    }
+
+    .accessibility-banner.visible { display: flex; }
+
+    .accessibility-banner-text { flex: 1; line-height: 1.4; }
+
+    .accessibility-banner-btn {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--white);
+      background: #B8860B;
+      border: none;
+      border-radius: 6px;
+      padding: 4px 10px;
+      cursor: pointer;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .accessibility-banner-btn:hover { background: #9A7209; }
+
+    .accessibility-dismiss {
+      font-size: 14px;
+      color: #B8860B;
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 0 2px;
+      flex-shrink: 0;
+    }
+
     /* ── Terminal Completed ── */
     .msg-terminal-completed {
       padding: 10px 12px;

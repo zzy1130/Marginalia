@@ -517,7 +517,7 @@ export function startServer() {
 
   Bun.serve({
     port: BACKEND_PORT,
-    fetch(req) {
+    async fetch(req) {
       if (req.method === "OPTIONS") {
         return new Response(null, { status: 204, headers: corsHeaders });
       }
