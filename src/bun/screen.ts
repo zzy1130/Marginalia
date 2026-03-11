@@ -12,6 +12,8 @@ export interface ScreenContext {
   doc_info: string;
   page_text: string | null;
   image_b64: string | null;
+  app_name: string;
+  filename: string | null;
 }
 
 export async function captureContext(): Promise<ScreenContext> {
@@ -33,13 +35,13 @@ export async function captureContext(): Promise<ScreenContext> {
 
   if (proc.exitCode !== 0) {
     console.error("[screen] capture failed:", stderr);
-    return { doc_info: "No document detected", page_text: null, image_b64: null };
+    return { doc_info: "No document detected", page_text: null, image_b64: null, app_name: "", filename: null };
   }
 
   try {
     return JSON.parse(stdout.trim());
   } catch {
     console.error("[screen] failed to parse context JSON:", stdout.slice(0, 200));
-    return { doc_info: "No document detected", page_text: null, image_b64: null };
+    return { doc_info: "No document detected", page_text: null, image_b64: null, app_name: "", filename: null };
   }
 }

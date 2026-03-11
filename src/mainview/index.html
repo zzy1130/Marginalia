@@ -342,6 +342,325 @@
       font-size: 12px;
     }
 
+    /* ── Terminal Alert ── */
+    .msg-terminal-alert {
+      padding: 10px 12px;
+      background: #FFF8ED;
+      border: 1px solid #F0D9A0;
+      border-radius: 10px;
+      margin: 4px 0;
+    }
+
+    .terminal-alert-header {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 6px;
+    }
+
+    .terminal-alert-icon {
+      font-size: 13px;
+    }
+
+    .terminal-alert-source {
+      font-size: 11px;
+      font-weight: 600;
+      color: #8B6E1F;
+      letter-spacing: 0.2px;
+    }
+
+    .terminal-alert-context {
+      font-family: Menlo, monospace;
+      font-size: 11px;
+      line-height: 1.5;
+      background: rgba(0,0,0,0.04);
+      border-radius: 6px;
+      padding: 8px 10px;
+      max-height: 140px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+      color: var(--text-primary);
+      margin-bottom: 6px;
+    }
+
+    .terminal-alert-prompt {
+      font-size: 12px;
+      font-weight: 600;
+      color: #8B6E1F;
+      margin-bottom: 8px;
+    }
+
+    .terminal-reply-btn {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--white);
+      background: #B8860B;
+      border: none;
+      border-radius: 6px;
+      padding: 5px 14px;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    .terminal-reply-btn:hover { background: #9A7209; }
+
+    /* ── Terminal Tabs ── */
+    .terminal-tabs {
+      display: none;
+      gap: 2px;
+      padding: 4px 10px 0;
+      border-bottom: 1px solid var(--border-light);
+      overflow-x: auto;
+      flex-shrink: 0;
+    }
+
+    .terminal-tabs.visible { display: flex; }
+
+    .terminal-tabs::-webkit-scrollbar { height: 0; }
+
+    .terminal-tab {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 10px 5px;
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--text-tertiary);
+      border-radius: 6px 6px 0 0;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.15s;
+      border: 1px solid transparent;
+      border-bottom: none;
+      margin-bottom: -1px;
+      flex-shrink: 0;
+    }
+
+    .terminal-tab:hover { color: var(--text-secondary); background: var(--hover-subtle); }
+
+    .terminal-tab.active {
+      color: var(--brand);
+      font-weight: 600;
+      background: var(--bg-card);
+      border-color: var(--border-light);
+    }
+
+    .terminal-tab-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .terminal-tab-dot.unread {
+      background: #4CAF50;
+      box-shadow: 0 0 3px rgba(76,175,80,0.5);
+    }
+
+    .tab-content { display: none; }
+    .tab-content.active { display: flex; flex-direction: column; gap: 8px; }
+
+    /* ── Terminal Completed ── */
+    .msg-terminal-completed {
+      padding: 10px 12px;
+      background: #F0FAF0;
+      border: 1px solid #B2D8B2;
+      border-radius: 10px;
+      margin: 4px 0;
+    }
+
+    .terminal-completed-header {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 6px;
+    }
+
+    .terminal-completed-icon {
+      font-size: 13px;
+    }
+
+    .terminal-completed-source {
+      font-size: 11px;
+      font-weight: 600;
+      color: #2E7D32;
+      letter-spacing: 0.2px;
+    }
+
+    .terminal-completed-context {
+      font-family: Menlo, monospace;
+      font-size: 11px;
+      line-height: 1.5;
+      background: rgba(0,0,0,0.04);
+      border-radius: 6px;
+      padding: 8px 10px;
+      max-height: 100px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+      color: var(--text-primary);
+    }
+
+    /* ── Reply Mode Banner ── */
+    .reply-banner {
+      display: none;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 12px;
+      background: #FFF8ED;
+      border-top: 1px solid #F0D9A0;
+      font-size: 11.5px;
+      color: #8B6E1F;
+    }
+
+    .reply-banner.active { display: flex; }
+
+    .reply-banner-text {
+      flex: 1;
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .reply-cancel-btn {
+      font-size: 11px;
+      color: var(--text-secondary);
+      background: none;
+      border: 1px solid var(--border-medium);
+      border-radius: 5px;
+      padding: 2px 8px;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    .reply-cancel-btn:hover { background: rgba(0,0,0,0.04); }
+
+    /* ── Agent Switcher ── */
+    .agent-switcher {
+      -webkit-app-region: no-drag;
+      position: relative;
+      pointer-events: auto;
+    }
+
+    .agent-badge {
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--brand-accent);
+      background: var(--brand-light);
+      border: 1px solid transparent;
+      border-radius: 6px;
+      padding: 2px 7px;
+      letter-spacing: 0.2px;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: all 0.15s;
+      user-select: none;
+    }
+
+    .agent-badge:hover {
+      border-color: var(--brand-accent);
+    }
+
+    .agent-badge::after {
+      content: " \25BE";
+      font-size: 8px;
+    }
+
+    .agent-menu {
+      display: none;
+      position: absolute;
+      top: calc(100% + 4px);
+      right: 0;
+      background: var(--bg-card);
+      border: 1px solid var(--border-medium);
+      border-radius: 8px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+      min-width: 140px;
+      z-index: 100;
+      overflow: hidden;
+    }
+
+    .agent-menu.open { display: block; }
+
+    .agent-menu-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 12px;
+      font-size: 12px;
+      color: var(--text-primary);
+      cursor: pointer;
+      transition: background 0.1s;
+    }
+
+    .agent-menu-item:hover { background: var(--hover-subtle); }
+
+    .agent-menu-item.active {
+      color: var(--brand);
+      font-weight: 600;
+      background: var(--brand-light);
+    }
+
+    .agent-menu-item-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--text-disabled);
+      flex-shrink: 0;
+    }
+
+    .agent-menu-item.active .agent-menu-item-dot {
+      background: var(--brand);
+    }
+
+    /* ── Monitor indicator ── */
+    .monitor-dot {
+      -webkit-app-region: no-drag;
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--text-disabled);
+      flex-shrink: 0;
+      pointer-events: auto;
+      transition: background 0.3s;
+    }
+
+    .monitor-dot.active {
+      background: #4CAF50;
+      box-shadow: 0 0 4px rgba(76,175,80,0.5);
+    }
+
+    @keyframes monitor-pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    .monitor-dot.active {
+      animation: monitor-pulse 2s ease-in-out infinite;
+    }
+
+    .reset-btn {
+      -webkit-app-region: no-drag;
+      width: 22px; height: 22px;
+      background: none;
+      border: 1px solid transparent;
+      border-radius: 5px;
+      color: var(--text-tertiary);
+      font-size: 13px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s;
+      pointer-events: auto;
+      flex-shrink: 0;
+    }
+
+    .reset-btn:hover {
+      color: var(--text-secondary);
+      border-color: var(--border-medium);
+      background: rgba(0,0,0,0.03);
+    }
+
     /* ── Input Row ── */
     .input-row {
       display: flex;
@@ -407,6 +726,12 @@
     <div class="titlebar-dot electrobun-webkit-app-region-drag"></div>
     <span class="titlebar-text electrobun-webkit-app-region-drag">Marginalia</span>
     <div class="titlebar-spacer electrobun-webkit-app-region-drag"></div>
+    <div class="agent-switcher electrobun-webkit-app-region-no-drag" id="agentSwitcher">
+      <span class="agent-badge" id="agentBadge">PDF</span>
+      <div class="agent-menu" id="agentMenu"></div>
+    </div>
+    <span class="monitor-dot electrobun-webkit-app-region-no-drag" id="monitorDot" title="Terminal monitor: connecting..."></span>
+    <button class="reset-btn electrobun-webkit-app-region-no-drag" id="resetBtn" title="Clear chat">&#8635;</button>
     <span class="status-badge electrobun-webkit-app-region-no-drag" id="statusBadge">Ready</span>
   </div>
 
@@ -562,8 +887,16 @@
 
     <!-- Chat Card -->
     <div class="chat-card">
+      <div class="terminal-tabs" id="terminalTabs"></div>
       <div class="chat-messages" id="chatMessages">
-        <div class="msg-welcome">Open a PDF or PPT, then ask me anything about the current page.</div>
+        <div class="tab-content active" data-tab="default">
+          <div class="msg-welcome">Open a PDF or PPT, then ask me anything about the current page.</div>
+        </div>
+      </div>
+
+      <div class="reply-banner" id="replyBanner">
+        <span class="reply-banner-text" id="replyBannerText"></span>
+        <button class="reply-cancel-btn" id="replyCancelBtn">Cancel</button>
       </div>
 
       <div class="input-row">

@@ -50,6 +50,8 @@ def main():
         "doc_info": "\n".join(parts),
         "page_text": ctx.get("page_text"),
         "image_b64": image_b64,
+        "app_name": ctx["app_name"],
+        "filename": ctx.get("filename"),
     }
     print(json.dumps(result))
 

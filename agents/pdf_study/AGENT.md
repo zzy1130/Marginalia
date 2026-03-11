@@ -15,6 +15,9 @@ context_match:
     - WPS Office
   file_types: [.pdf, .pptx, .ppt, .key]
 
+tools:
+  - run_code
+
 sandbox:
   allowed_file_types: [.pdf, .pptx, .ppt]
   blocked_modules:

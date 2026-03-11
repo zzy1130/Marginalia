@@ -1,13 +1,21 @@
 /**
- * run_code AgentTool — executes Python code via Bun.spawn with import guards.
- * Port of core/sandbox.py._run_code_fallback to TypeScript.
+ * run_code AgentTool factory — creates a Python executor configured
+ * by the agent's sandbox settings (blocked modules, timeout).
+ *
+ * Every agent gets run_code as its sole tool. The sandbox config in
+ * AGENT.md controls what each agent's run_code is allowed to do.
  */
 
 import { Type } from "@mariozechner/pi-ai";
 import type { AgentTool } from "@mariozechner/pi-agent-core";
 import { VENV_PYTHON, PROJECT_ROOT } from "../paths";
 
-const BLOCKED_MODULES = [
+export interface RunCodeSandbox {
+  blocked_modules?: string[];
+  max_timeout_s?: number;
+}
+
+const DEFAULT_BLOCKED = [
   "subprocess", "socket",
   "ftplib", "smtplib", "multiprocessing",
 ];
@@ -17,25 +25,36 @@ const BLOCKED_SUBMODULES = [
   "urllib.request", "urllib.robotparser",
 ];
 
-const IMPORT_GUARD = `
-# Pre-import libraries and their transitive stdlib dependencies
-# BEFORE the import guard activates. Modules cached in sys.modules
-# won't trigger the guard on subsequent imports.
+function buildImportGuard(blocked: string[]): string {
+  return `
 import os, sys, re, tempfile, pathlib, importlib
 import importlib.metadata, email, email.message, email.utils
 import socket as _socket_preload
-import fitz, markdown
-markdown.Markdown(extensions=["fenced_code", "tables", "nl2br"])
+
+# Project root on sys.path so skills can import from core.*
+_mr = os.environ.get("MARGINALIA_ROOT", ".")
+if _mr not in sys.path:
+    sys.path.insert(0, _mr)
+
+try:
+    import fitz
+except ImportError:
+    pass
+try:
+    import markdown
+    markdown.Markdown(extensions=["fenced_code", "tables", "nl2br"])
+except ImportError:
+    pass
 try:
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot
-except Exception:
+except ImportError:
     pass
 
 import builtins as _b
 _orig_import = _b.__import__
-_BLOCKED = ${JSON.stringify(BLOCKED_MODULES)}
+_BLOCKED = ${JSON.stringify(blocked)}
 _BLOCKED_SUB = ${JSON.stringify(BLOCKED_SUBMODULES)}
 def _safe_import(name, *a, **kw):
     if name.split('.')[0] in _BLOCKED:
@@ -45,11 +64,10 @@ def _safe_import(name, *a, **kw):
     return _orig_import(name, *a, **kw)
 _b.__import__ = _safe_import
 `;
+}
 
-const MAX_TIMEOUT_MS = 30_000;
-
-async function executePython(code: string): Promise<string> {
-  const restricted = IMPORT_GUARD + code;
+async function executePython(code: string, importGuard: string, timeoutMs: number): Promise<string> {
+  const restricted = importGuard + code;
 
   const env: Record<string, string> = { ...(process.env as Record<string, string>) };
   env["DYLD_LIBRARY_PATH"] = "/opt/homebrew/lib:" + (env["DYLD_LIBRARY_PATH"] ?? "");
@@ -63,7 +81,7 @@ async function executePython(code: string): Promise<string> {
     env,
   });
 
-  const timer = setTimeout(() => proc.kill(), MAX_TIMEOUT_MS);
+  const timer = setTimeout(() => proc.kill(), timeoutMs);
 
   const stdout = await new Response(proc.stdout).text();
   const stderr = await new Response(proc.stderr).text();
@@ -77,22 +95,31 @@ async function executePython(code: string): Promise<string> {
   return output || "(no output)";
 }
 
-export const runCodeTool: AgentTool = {
-  name: "run_code",
-  label: "Run Code",
-  description: "Execute Python code. Use code templates from your skills when available.",
-  parameters: Type.Object({
-    code: Type.String({ description: "Python code to execute." }),
-  }),
-  execute: async (_toolCallId, params: { code: string }) => {
-    try {
-      console.log("[run_code] Executing code...");
-      const result = await executePython(params.code);
-      console.log("[run_code] Result:", result.slice(0, 2000));
-      return { content: [{ type: "text", text: result }], details: {} };
-    } catch (err) {
-      console.error("[run_code] Error:", err);
-      throw new Error(`Code execution failed: ${err}`);
-    }
-  },
-};
+export function createRunCodeTool(sandbox?: RunCodeSandbox): AgentTool {
+  const blocked = sandbox?.blocked_modules ?? DEFAULT_BLOCKED;
+  const timeoutMs = (sandbox?.max_timeout_s ?? 30) * 1000;
+  const importGuard = buildImportGuard(blocked);
+
+  console.log(`[run_code] Sandbox: blocked=[${blocked.join(",")}], timeout=${timeoutMs}ms`);
+
+  return {
+    name: "run_code",
+    label: "Run Code",
+    description: "Execute Python code. Use code templates from your skills when available.",
+    parameters: Type.Object({
+      code: Type.String({ description: "Python code to execute." }),
+    }),
+    execute: async (_toolCallId, params: unknown) => {
+      try {
+        const { code } = params as { code: string };
+        console.log("[run_code] Executing code...");
+        const result = await executePython(code, importGuard, timeoutMs);
+        console.log("[run_code] Result:", result.slice(0, 2000));
+        return { content: [{ type: "text", text: result }], details: {} };
+      } catch (err) {
+        console.error("[run_code] Error:", err);
+        throw new Error(`Code execution failed: ${err}`);
+      }
+    },
+  };
+}

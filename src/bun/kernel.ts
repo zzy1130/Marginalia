@@ -1,6 +1,7 @@
 /**
- * Skill kernel — loads SKILL.md + skills/ directory, assembles system prompt.
- * Port of core/agent.py's _load_skill() + _load_agent_skills() to TypeScript.
+ * Agent kernel — loads AGENT.md + skills/ directory, assembles system prompt.
+ * Each agent is a directory under agents/ with an AGENT.md manifest.
+ * Sub-skills live in agents/{id}/skills/{name}/SKILL.md and are appended to the prompt.
  */
 
 import { readFileSync, readdirSync, existsSync, statSync } from "fs";
@@ -10,51 +11,56 @@ import { PROJECT_ROOT } from "./paths";
 
 const AGENTS_DIR = join(PROJECT_ROOT, "agents");
 
-export interface SkillMeta {
+export interface AgentMeta {
   name: string;
   description?: string;
   context_match?: {
     app_names?: string[];
     file_types?: string[];
   };
+  tools?: string[];
   sandbox?: {
     allowed_file_types?: string[];
     blocked_modules?: string[];
     max_timeout_s?: number;
     can_capture_screen?: boolean;
-    network_egress?: string[];
+    network_egress?: string[] | boolean;
+    file_write?: string[] | boolean;
   };
   system_prompt: string;
 }
 
-let skillCache: SkillMeta | null = null;
-let skillCacheId: string | null = null;
+let agentCache: AgentMeta | null = null;
+let agentCacheId: string | null = null;
 
-export function loadSkill(agentId: string = "pdf_study"): SkillMeta {
-  if (skillCache && skillCacheId === agentId) return skillCache;
+export function loadAgent(agentId: string = "pdf_study"): AgentMeta {
+  if (agentCache && agentCacheId === agentId) return agentCache;
 
-  const skillPath = join(AGENTS_DIR, agentId, "SKILL.md");
-  const text = readFileSync(skillPath, "utf-8");
+  const agentPath = join(AGENTS_DIR, agentId, "AGENT.md");
+  const text = readFileSync(agentPath, "utf-8");
 
   const parts = text.split("---", 3);
   if (parts.length < 3) {
-    throw new Error(`SKILL.md missing frontmatter: ${skillPath}`);
+    throw new Error(`AGENT.md missing frontmatter: ${agentPath}`);
   }
 
   const meta = yaml.load(parts[1]) as Record<string, unknown>;
   const basePrompt = parts[2].trim();
   const skillsText = loadAgentSkills(join(AGENTS_DIR, agentId));
 
-  const result: SkillMeta = {
+  const result: AgentMeta = {
     ...(meta as any),
     system_prompt: basePrompt + skillsText,
   };
 
-  console.log(`[kernel] Loaded skill: ${result.name} (${agentId})`);
-  skillCache = result;
-  skillCacheId = agentId;
+  console.log(`[kernel] Loaded agent: ${result.name} (${agentId}), tools: [${(result.tools ?? []).join(", ")}]`);
+  agentCache = result;
+  agentCacheId = agentId;
   return result;
 }
+
+/** @deprecated Use loadAgent instead */
+export const loadSkill = loadAgent;
 
 function loadAgentSkills(agentDir: string): string {
   const skillsDir = join(agentDir, "skills");
