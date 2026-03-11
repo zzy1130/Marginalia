@@ -12,6 +12,7 @@ import { VENV_PYTHON, PROJECT_ROOT } from "../paths";
 
 export interface RunCodeSandbox {
   blocked_modules?: string[];
+  blocked_submodules?: string[];
   max_timeout_s?: number;
 }
 
@@ -20,12 +21,13 @@ const DEFAULT_BLOCKED = [
   "ftplib", "smtplib", "multiprocessing",
 ];
 
-const BLOCKED_SUBMODULES = [
+const DEFAULT_BLOCKED_SUBMODULES = [
   "http.client", "http.server",
   "urllib.request", "urllib.robotparser",
 ];
 
-function buildImportGuard(blocked: string[]): string {
+function buildImportGuard(blocked: string[], blockedSub?: string[]): string {
+  const submodules = blockedSub ?? DEFAULT_BLOCKED_SUBMODULES;
   return `
 import os, sys, re, tempfile, pathlib, importlib
 import importlib.metadata, email, email.message, email.utils
@@ -55,7 +57,7 @@ except ImportError:
 import builtins as _b
 _orig_import = _b.__import__
 _BLOCKED = ${JSON.stringify(blocked)}
-_BLOCKED_SUB = ${JSON.stringify(BLOCKED_SUBMODULES)}
+_BLOCKED_SUB = ${JSON.stringify(submodules)}
 def _safe_import(name, *a, **kw):
     if name.split('.')[0] in _BLOCKED:
         raise ImportError(f'Module {name} is blocked in restricted mode')
@@ -97,8 +99,9 @@ async function executePython(code: string, importGuard: string, timeoutMs: numbe
 
 export function createRunCodeTool(sandbox?: RunCodeSandbox): AgentTool {
   const blocked = sandbox?.blocked_modules ?? DEFAULT_BLOCKED;
+  const blockedSub = sandbox?.blocked_submodules;
   const timeoutMs = (sandbox?.max_timeout_s ?? 30) * 1000;
-  const importGuard = buildImportGuard(blocked);
+  const importGuard = buildImportGuard(blocked, blockedSub);
 
   console.log(`[run_code] Sandbox: blocked=[${blocked.join(",")}], timeout=${timeoutMs}ms`);
 

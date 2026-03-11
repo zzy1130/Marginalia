@@ -336,10 +336,46 @@ end tell
         except Exception as e:
             return f"error: {e}"
 
-    elif source == "cursor":
-        proc = subprocess.Popen(["pbcopy"], stdin=subprocess.PIPE)
-        proc.communicate(text.encode())
-        return "clipboard"
+    elif source == "cursor" and len(parts) >= 3:
+        import urllib.request, urllib.error
+        project_slug = parts[1]
+        term_num = parts[2]
+
+        # Read PID from the terminal file
+        term_file = Path.home() / ".cursor" / "projects" / project_slug / "terminals" / f"{term_num}.txt"
+        pid = None
+        if term_file.exists():
+            try:
+                header = term_file.read_text(errors="replace").split("---", 2)[1]
+                for line in header.strip().split("\n"):
+                    if line.strip().startswith("pid:"):
+                        pid = line.partition(":")[2].strip()
+                        break
+            except Exception:
+                pass
+
+        body = {"text": text}
+        if pid:
+            body["pid"] = pid
+
+        try:
+            req = urllib.request.Request(
+                "http://127.0.0.1:18765/send",
+                data=json.dumps(body).encode(),
+                headers={"Content-Type": "application/json"},
+                method="POST",
+            )
+            resp = urllib.request.urlopen(req, timeout=5)
+            result = json.loads(resp.read())
+            if result.get("ok"):
+                return "ok"
+            return f"bridge_error: {result.get('error', 'unknown')}"
+        except urllib.error.URLError:
+            proc = subprocess.Popen(["pbcopy"], stdin=subprocess.PIPE)
+            proc.communicate(text.encode())
+            return "clipboard"
+        except Exception as e:
+            return f"error: {e}"
 
     return f"unknown_source:{source}"
 

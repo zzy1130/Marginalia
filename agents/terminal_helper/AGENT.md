@@ -20,6 +20,7 @@ sandbox:
     - smtplib
     - ctypes
     - multiprocessing
+  blocked_submodules: []
   max_timeout_s: 15
   can_capture_screen: false
   network_egress: false

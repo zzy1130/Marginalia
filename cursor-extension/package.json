@@ -1,0 +1,10 @@
+{
+  "name": "marginalia-bridge",
+  "displayName": "Marginalia Bridge",
+  "description": "Allows Marginalia to send text to Cursor terminals",
+  "version": "0.0.1",
+  "engines": { "vscode": "^1.80.0" },
+  "activationEvents": ["onStartupFinished"],
+  "main": "./extension.js",
+  "contributes": {}
+}
