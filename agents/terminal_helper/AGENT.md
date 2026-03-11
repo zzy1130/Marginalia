@@ -15,7 +15,6 @@ tools:
 
 sandbox:
   blocked_modules:
-    - socket
     - ftplib
     - smtplib
     - ctypes
