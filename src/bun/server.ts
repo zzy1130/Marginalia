@@ -25,19 +25,21 @@ const API_KEY = env.ANTHROPIC_API_KEY ?? Bun.env.ANTHROPIC_API_KEY ?? "";
 const BASE_URL = env.ANTHROPIC_BASE_URL ?? Bun.env.ANTHROPIC_BASE_URL ?? "https://api.anthropic.com";
 const MODEL_ID = env.MODEL ?? Bun.env.MODEL ?? "qwen3.5-plus";
 
-const dashscopeModel: Model<"anthropic-messages"> = {
-  id: MODEL_ID,
-  name: `${MODEL_ID} (DashScope)`,
-  api: "anthropic-messages",
-  provider: "dashscope",
-  baseUrl: BASE_URL,
-  headers: { Authorization: `Bearer ${API_KEY}` },
-  reasoning: false,
-  input: ["text", "image"],
-  cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
-  contextWindow: 128000,
-  maxTokens: 8192,
-};
+function makeModel(modelId: string): Model<"anthropic-messages"> {
+  return {
+    id: modelId,
+    name: `${modelId} (DashScope)`,
+    api: "anthropic-messages",
+    provider: "dashscope",
+    baseUrl: BASE_URL,
+    headers: { Authorization: `Bearer ${API_KEY}` },
+    reasoning: false,
+    input: ["text", "image"],
+    cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+    contextWindow: 128000,
+    maxTokens: 8192,
+  };
+}
 
 // ── Agent sessions ───────────────────────────────────────────────
 //
@@ -50,11 +52,12 @@ const sessions = new Map<string, Agent>();
 function newAgent(agentId: string): Agent {
   const meta = loadAgent(agentId);
   const tools = buildTools(meta.tools ?? [], meta.sandbox);
+  const model = makeModel(meta.model ?? MODEL_ID);
 
   return new Agent({
     initialState: {
       systemPrompt: meta.system_prompt,
-      model: dashscopeModel,
+      model,
       tools,
     },
     getApiKey: () => API_KEY,
@@ -259,9 +262,11 @@ function pushToClients(payload: { type: string; data: any }) {
 
 // ── LLM summarization ───────────────────────────────────────────
 
+const FAST_MODEL = "qwen3.5-flash";
+
 async function callLLM(system: string, user: string): Promise<string> {
   const url = `${BASE_URL}/v1/messages`;
-  console.log(`[summarize] Calling ${url} with model=${MODEL_ID}`);
+  console.log(`[summarize] Calling ${url} with model=${FAST_MODEL}`);
   try {
     const res = await fetch(url, {
       method: "POST",
@@ -271,7 +276,7 @@ async function callLLM(system: string, user: string): Promise<string> {
         "anthropic-version": "2023-06-01",
       },
       body: JSON.stringify({
-        model: MODEL_ID,
+        model: FAST_MODEL,
         max_tokens: 500,
         system,
         messages: [{ role: "user", content: user }],

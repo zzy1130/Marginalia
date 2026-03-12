@@ -14,6 +14,7 @@ const AGENTS_DIR = join(PROJECT_ROOT, "agents");
 export interface AgentMeta {
   name: string;
   description?: string;
+  model?: string;
   context_match?: {
     app_names?: string[];
     file_types?: string[];
