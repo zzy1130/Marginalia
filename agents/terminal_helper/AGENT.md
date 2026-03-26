@@ -2,6 +2,10 @@
 name: terminal-helper
 description: 终端AI助手监控器 — 监控运行AI agent的终端，代理用户交互
 model: qwen3.5-flash
+runtime:
+  mode: interactive
+  visible_in_chat: true
+  auto_select: true
 
 context_match:
   app_names:

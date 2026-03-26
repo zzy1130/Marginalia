@@ -1,7 +1,7 @@
 [project]
 name = "marginalia"
 version = "0.1.0"
-description = "AI learning companion - sees your slides, answers questions, takes notes"
+description = "AI learning agent - sees your slides, answers questions, takes notes"
 requires-python = ">=3.10,<3.13"
 dependencies = [
     "python-dotenv>=1.0.0",

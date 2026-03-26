@@ -12,24 +12,41 @@ from core.screen import get_document_context, capture_window
 
 
 def main():
+    include_image = "--no-image" not in sys.argv[1:]
     ctx = get_document_context()
 
-    parts = [f"App: {ctx['app_name']}"]
-    if ctx["filename"]:
-        parts.append(f"File: {ctx['filename']}")
-    if ctx["file_path"]:
-        parts.append(f"Path: {ctx['file_path']}")
-    if ctx["current_page"] is not None:
-        page_str = f"Page: {ctx['current_page']}"
-        if ctx["total_pages"]:
-            page_str += f" / {ctx['total_pages']}"
-        parts.append(page_str)
-    if not ctx["filename"] and not ctx["current_page"]:
-        parts.append(f"Window title: {ctx['title']}")
+    status = ctx.get("status", "ok")
+    reason = ctx.get("reason")
+    parts = [f"Status: {status}"]
+
+    if status == "unavailable":
+        parts.append("Desktop observation unavailable")
+        if reason:
+            parts.append(f"Reason: {reason}")
+        parts.append("Hint: check macOS Screen Recording / Accessibility permissions if this keeps happening")
+    elif status == "no_document":
+        parts.append("No supported PDF/PPT window detected")
+    else:
+        parts.append(f"App: {ctx['app_name']}")
+        if ctx["filename"]:
+            parts.append(f"File: {ctx['filename']}")
+        if ctx["file_path"]:
+            parts.append(f"Path: {ctx['file_path']}")
+        elif ctx["filename"]:
+            parts.append("Path: unavailable")
+        if ctx["current_page"] is not None:
+            page_str = f"Page: {ctx['current_page']}"
+            if ctx["total_pages"]:
+                page_str += f" / {ctx['total_pages']}"
+            parts.append(page_str)
+        else:
+            parts.append("Page: unavailable")
+        if ctx["title"]:
+            parts.append(f"Window title: {ctx['title']}")
 
     image_b64 = None
     window_id = ctx.get("window_id")
-    if window_id is not None:
+    if include_image and status == "ok" and window_id is not None:
         try:
             from PIL import Image
 
@@ -47,11 +64,16 @@ def main():
             pass
 
     result = {
+        "status": status,
+        "reason": reason,
         "doc_info": "\n".join(parts),
         "page_text": ctx.get("page_text"),
         "image_b64": image_b64,
         "app_name": ctx["app_name"],
         "filename": ctx.get("filename"),
+        "file_path": ctx.get("file_path"),
+        "current_page": ctx.get("current_page"),
+        "total_pages": ctx.get("total_pages"),
     }
     print(json.dumps(result))
 

@@ -1,7 +1,6 @@
 /**
  * Marginalia — Electrobun main process.
- * Creates window, menu, tray.
- * Starts the Bun HTTP server (pi-mono agent) directly — no Python backend needed.
+ * Creates the main window and tray shell.
  */
 
 import { BrowserWindow, ApplicationMenu, Tray } from "electrobun/bun";
@@ -25,13 +24,15 @@ ApplicationMenu.setApplicationMenu([
   },
 ]);
 
-const win = new BrowserWindow({
+// --- Main window ---
+const mainWin = new BrowserWindow({
   title: "Marginalia",
   url: "views://mainview/index.html",
   titleBarStyle: "hiddenInset",
   frame: { width: 440, height: 660, x: 100, y: 100 },
 });
 
+// --- Tray ---
 const tray = new Tray({ title: "Marginalia" });
 
 tray.on("tray-clicked", (e) => {
@@ -43,7 +44,7 @@ tray.on("tray-clicked", (e) => {
       { type: "normal", label: "Quit Marginalia", action: "quit" },
     ]);
   } else if (action === "toggle") {
-    win.focus();
+    mainWin.focus();
   } else if (action === "quit") {
     process.exit(0);
   }

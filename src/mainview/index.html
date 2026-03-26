@@ -49,7 +49,7 @@
       display: flex;
       align-items: center;
       padding: 0 16px 0 78px;
-      gap: 8px;
+      gap: 10px;
     }
 
     .titlebar-dot {
@@ -71,7 +71,17 @@
 
     .titlebar-spacer { 
       flex: 1; 
+      min-width: 0;
       pointer-events: none;
+    }
+
+    .titlebar-actions {
+      -webkit-app-region: no-drag;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+      flex-shrink: 0;
     }
 
     .status-badge {
@@ -82,8 +92,12 @@
       border-radius: 8px;
       padding: 2px 8px;
       white-space: nowrap;
+      max-width: 72px;
+      overflow: hidden;
+      text-overflow: ellipsis;
       transition: all 0.3s ease;
       pointer-events: auto;
+      flex-shrink: 0;
     }
 
     .status-badge.thinking {
@@ -104,6 +118,7 @@
       padding: 0 16px 16px;
       min-height: 0;
       gap: 6px;
+      position: relative;
     }
 
     /* ── Robot ── */
@@ -457,6 +472,259 @@
       box-shadow: 0 0 3px rgba(76,175,80,0.5);
     }
 
+    .nextmove-trigger {
+      -webkit-app-region: no-drag;
+      display: none;
+      align-items: center;
+      gap: 6px;
+      min-width: 68px;
+      height: 24px;
+      padding: 0 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(0,0,0,0.08);
+      background: rgba(255,255,255,0.68);
+      color: var(--text-secondary);
+      font-size: 10.5px;
+      font-weight: 700;
+      letter-spacing: 0.2px;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: all 0.18s ease;
+      pointer-events: auto;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      flex-shrink: 0;
+    }
+
+    .nextmove-trigger-label {
+      white-space: nowrap;
+    }
+
+    .nextmove-trigger.visible { display: inline-flex; }
+
+    .nextmove-trigger:hover {
+      color: var(--text-primary);
+      border-color: rgba(46,66,38,0.16);
+      background: rgba(255,255,255,0.82);
+    }
+
+    .nextmove-trigger.hot {
+      color: var(--brand);
+      border-color: rgba(46,66,38,0.22);
+      box-shadow: 0 0 0 3px rgba(46,66,38,0.08);
+    }
+
+    .nextmove-trigger[data-urgency="high"] {
+      color: #8B6E1F;
+      border-color: rgba(184,134,11,0.24);
+      background: rgba(255,248,237,0.92);
+      box-shadow: 0 0 0 3px rgba(184,134,11,0.10);
+    }
+
+    .nextmove-trigger-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--brand-accent);
+      box-shadow: 0 0 0 3px rgba(85,100,74,0.10);
+      flex-shrink: 0;
+    }
+
+    .nextmove-trigger[data-urgency="high"] .nextmove-trigger-dot {
+      background: #B8860B;
+      box-shadow: 0 0 0 3px rgba(184,134,11,0.16);
+    }
+
+    .threadkeeper-dock {
+      position: absolute;
+      top: 10px;
+      right: 0;
+      z-index: 8;
+      display: none;
+      width: min(296px, calc(100% - 20px));
+      pointer-events: none;
+    }
+
+    .threadkeeper-dock.visible { display: block; }
+
+    .threadkeeper-shell {
+      pointer-events: auto;
+      margin-left: auto;
+      border-radius: 18px;
+      border: 1px solid rgba(0,0,0,0.08);
+      background: linear-gradient(145deg, rgba(255,255,255,0.92), rgba(246,244,241,0.90));
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      box-shadow: 0 18px 42px rgba(0,0,0,0.14);
+      overflow: hidden;
+      transform-origin: top right;
+      transform: translateY(0) scale(1);
+      transition: transform 0.22s ease, opacity 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease;
+    }
+
+    .threadkeeper-shell[data-urgency="high"] {
+      background: linear-gradient(145deg, rgba(255,248,237,0.95), rgba(255,244,220,0.92));
+      border-color: #F0D9A0;
+    }
+
+    .threadkeeper-shell.fresh {
+      box-shadow: 0 0 0 1px rgba(46,66,38,0.10), 0 20px 46px rgba(46,66,38,0.18);
+      transform: translateY(-2px) scale(1.01);
+    }
+
+    .threadkeeper-head {
+      display: flex;
+      gap: 12px;
+      justify-content: space-between;
+      padding: 13px 14px 11px;
+      border-bottom: 1px solid rgba(0,0,0,0.06);
+    }
+
+    .threadkeeper-head-copy {
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .threadkeeper-kicker {
+      font-size: 9.5px;
+      font-weight: 700;
+      letter-spacing: 0.65px;
+      text-transform: uppercase;
+      color: var(--brand-accent);
+    }
+
+    .threadkeeper-summary-line {
+      font-size: 13px;
+      font-weight: 700;
+      line-height: 1.35;
+      color: var(--text-primary);
+    }
+
+    .threadkeeper-meta-line {
+      font-size: 11.5px;
+      line-height: 1.45;
+      color: var(--text-secondary);
+    }
+
+    .threadkeeper-head-side {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .threadkeeper-time {
+      font-size: 10px;
+      color: var(--text-tertiary);
+    }
+
+    .threadkeeper-close-btn {
+      border: none;
+      background: rgba(255,255,255,0.76);
+      color: var(--text-secondary);
+      font-size: 10.5px;
+      font-weight: 600;
+      padding: 4px 9px;
+      border-radius: 999px;
+      cursor: pointer;
+      transition: background 0.15s ease, color 0.15s ease;
+    }
+
+    .threadkeeper-close-btn:hover {
+      background: rgba(255,255,255,0.96);
+      color: var(--text-primary);
+    }
+
+    .threadkeeper-body {
+      padding: 12px 14px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .threadkeeper-focus {
+      font-size: 11.5px;
+      line-height: 1.45;
+      color: var(--text-secondary);
+      padding: 8px 10px;
+      border-radius: 12px;
+      background: rgba(255,255,255,0.62);
+      border: 1px solid rgba(0,0,0,0.05);
+    }
+
+    .threadkeeper-section {
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+    }
+
+    .threadkeeper-section-label {
+      font-size: 9.5px;
+      font-weight: 700;
+      letter-spacing: 0.55px;
+      text-transform: uppercase;
+      color: var(--brand-accent);
+    }
+
+    .threadkeeper-detail-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .threadkeeper-detail-pill {
+      max-width: 100%;
+      padding: 6px 9px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.76);
+      border: 1px solid rgba(0,0,0,0.06);
+      color: var(--text-secondary);
+      font-size: 10.5px;
+      line-height: 1.35;
+    }
+
+    .threadkeeper-detail-pill.avoid {
+      background: rgba(255,248,237,0.9);
+      border-color: rgba(184,134,11,0.16);
+      color: #8B6E1F;
+    }
+
+    .threadkeeper-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      padding-top: 2px;
+    }
+
+    .threadkeeper-action-btn {
+      border: none;
+      border-radius: 12px;
+      padding: 8px 12px;
+      cursor: pointer;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.2px;
+      transition: transform 0.16s ease, box-shadow 0.16s ease, background 0.16s ease, color 0.16s ease;
+    }
+
+    .threadkeeper-action-btn.primary {
+      color: var(--white);
+      background: var(--brand);
+      box-shadow: 0 8px 18px rgba(46,66,38,0.18);
+    }
+
+    .threadkeeper-action-btn.secondary {
+      color: var(--brand);
+      background: rgba(46,66,38,0.09);
+    }
+
+    .threadkeeper-action-btn:hover {
+      transform: translateY(-1px);
+    }
+
     .tab-content { display: none; }
     .tab-content.active { display: flex; flex-direction: column; gap: 8px; }
 
@@ -582,6 +850,7 @@
       -webkit-app-region: no-drag;
       position: relative;
       pointer-events: auto;
+      flex-shrink: 0;
     }
 
     .agent-badge {
@@ -767,13 +1036,19 @@
     <div class="titlebar-dot electrobun-webkit-app-region-drag"></div>
     <span class="titlebar-text electrobun-webkit-app-region-drag">Marginalia</span>
     <div class="titlebar-spacer electrobun-webkit-app-region-drag"></div>
-    <div class="agent-switcher electrobun-webkit-app-region-no-drag" id="agentSwitcher">
-      <span class="agent-badge" id="agentBadge">PDF</span>
-      <div class="agent-menu" id="agentMenu"></div>
+    <div class="titlebar-actions electrobun-webkit-app-region-no-drag">
+      <div class="agent-switcher electrobun-webkit-app-region-no-drag" id="agentSwitcher">
+        <span class="agent-badge" id="agentBadge">PDF</span>
+        <div class="agent-menu" id="agentMenu"></div>
+      </div>
+      <span class="monitor-dot electrobun-webkit-app-region-no-drag" id="monitorDot" title="Terminal monitor: connecting..."></span>
+      <button class="nextmove-trigger electrobun-webkit-app-region-no-drag" id="nextMoveTrigger" title="Show next move">
+        <span class="nextmove-trigger-dot"></span>
+        <span class="nextmove-trigger-label" id="nextMoveTriggerLabel">Next</span>
+      </button>
+      <button class="reset-btn electrobun-webkit-app-region-no-drag" id="resetBtn" title="Clear chat">&#8635;</button>
+      <span class="status-badge electrobun-webkit-app-region-no-drag" id="statusBadge">Ready</span>
     </div>
-    <span class="monitor-dot electrobun-webkit-app-region-no-drag" id="monitorDot" title="Terminal monitor: connecting..."></span>
-    <button class="reset-btn electrobun-webkit-app-region-no-drag" id="resetBtn" title="Clear chat">&#8635;</button>
-    <span class="status-badge electrobun-webkit-app-region-no-drag" id="statusBadge">Ready</span>
   </div>
 
   <div class="content">
@@ -924,6 +1199,34 @@
           </g>
         </g>
       </svg>
+    </div>
+
+    <div class="threadkeeper-dock" id="threadkeeperDock">
+      <div class="threadkeeper-shell" id="threadkeeperShell" data-urgency="low">
+        <div class="threadkeeper-head">
+          <div class="threadkeeper-head-copy">
+            <span class="threadkeeper-kicker" id="threadkeeperPanelTitle">What Now</span>
+            <span class="threadkeeper-summary-line" id="threadkeeperSummary">Resume thread</span>
+            <span class="threadkeeper-meta-line" id="threadkeeperMeta">最新的上下文切换会显示在这里</span>
+          </div>
+          <div class="threadkeeper-head-side">
+            <span class="threadkeeper-time" id="threadkeeperTime">now</span>
+            <button class="threadkeeper-close-btn" id="threadkeeperClose" type="button">Close</button>
+          </div>
+        </div>
+        <div class="threadkeeper-body">
+          <div class="threadkeeper-focus" id="threadkeeperFocus"></div>
+          <div class="threadkeeper-section">
+            <div class="threadkeeper-section-label">现在在做</div>
+            <div class="threadkeeper-detail-grid" id="threadkeeperTasks"></div>
+          </div>
+          <div class="threadkeeper-section">
+            <div class="threadkeeper-section-label">避免</div>
+            <div class="threadkeeper-detail-grid" id="threadkeeperAvoid"></div>
+          </div>
+          <div class="threadkeeper-actions" id="threadkeeperActions"></div>
+        </div>
+      </div>
     </div>
 
     <!-- Chat Card -->

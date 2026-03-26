@@ -18,6 +18,21 @@ const API_BASE = "http://127.0.0.1:8765";
 let isBusy = false;
 let chatMessages: HTMLElement;
 let responseTargetTab: string | null = null;
+let nextMoveTrigger: HTMLButtonElement | null = null;
+let nextMoveTriggerLabelEl: HTMLElement | null = null;
+let threadkeeperDock: HTMLElement | null = null;
+let threadkeeperShell: HTMLElement | null = null;
+let threadkeeperSummaryEl: HTMLElement | null = null;
+let threadkeeperMetaEl: HTMLElement | null = null;
+let threadkeeperTimeEl: HTMLElement | null = null;
+let threadkeeperFocusEl: HTMLElement | null = null;
+let threadkeeperTasksEl: HTMLElement | null = null;
+let threadkeeperAvoidEl: HTMLElement | null = null;
+let threadkeeperActionsEl: HTMLElement | null = null;
+let threadkeeperPanelTitleEl: HTMLElement | null = null;
+let threadkeeperOpen = false;
+let threadkeeperSticky = false;
+let threadkeeperAutoCloseTimer: number | null = null;
 
 // ── Agent switching state ────────────────────────────────────────
 
@@ -34,13 +49,39 @@ const AGENT_PLACEHOLDERS: Record<string, string> = {
   terminal_helper: "Respond to a terminal...",
 };
 
+interface ThreadkeeperCard {
+  id: string;
+  title: string;
+  summary: string;
+  focus: string;
+  details: string[];
+  accent: "terminal" | "document" | "context";
+  urgency?: "low" | "medium" | "high";
+  nextMove?: string;
+  whyNow?: string;
+  tasks?: string[];
+  avoid?: string[];
+  actions?: ThreadkeeperAction[];
+  timestamp: number;
+}
+
+let latestThreadkeeperCard: ThreadkeeperCard | null = null;
+
+interface ThreadkeeperAction {
+  id: string;
+  label: string;
+  kind: "switch_agent" | "prompt";
+  agentId?: "pdf_study" | "terminal_helper";
+  prompt?: string;
+}
+
 function switchAgent(agentId: string) {
   currentAgentId = agentId;
   const badge = document.getElementById("agentBadge");
   if (badge) badge.textContent = AGENT_LABELS[agentId] ?? agentId;
 
   const input = document.getElementById("inputField") as HTMLInputElement | null;
-  if (input && !pendingTerminalAlert) {
+  if (input) {
     input.placeholder = AGENT_PLACEHOLDERS[agentId] ?? "Type a message...";
   }
 
@@ -113,11 +154,11 @@ interface TabInfo {
   source: string;
   hasUnread: boolean;
   lastEvent: any;
+  lastEventSeq: number;
 }
 
 const terminalTabs = new Map<string, TabInfo>();
 let activeTabId: string | null = null;
-let pendingTerminalAlert: any = null;
 
 function extractLabel(command: string): string {
   const parts = command.split(/\s+/);
@@ -131,7 +172,7 @@ function extractLabel(command: string): string {
 function ensureTab(termId: string, source: string, name: string, command: string): TabInfo {
   let tab = terminalTabs.get(termId);
   if (!tab) {
-    tab = { id: termId, label: extractLabel(command), command, source, hasUnread: false, lastEvent: null };
+    tab = { id: termId, label: extractLabel(command), command, source, hasUnread: false, lastEvent: null, lastEventSeq: 0 };
     terminalTabs.set(termId, tab);
 
     const container = document.createElement("div");
@@ -216,15 +257,6 @@ function getActiveTerminalContext(): any | null {
   return tab.lastEvent ?? { id: tab.id, source: tab.source, command: tab.command, name: tab.label };
 }
 
-function exitReplyMode() {
-  pendingTerminalAlert = null;
-  const banner = document.getElementById("replyBanner");
-  const input = document.getElementById("inputField") as HTMLInputElement;
-
-  if (banner) banner.classList.remove("active");
-  if (input) input.placeholder = AGENT_PLACEHOLDERS[currentAgentId ?? "pdf_study"] ?? "Type a message...";
-}
-
 // ── Robot state ──────────────────────────────────────────────────
 
 function robotState(state: string) {
@@ -252,6 +284,173 @@ function scrollToBottom() {
 
 function escapeHtml(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+function formatThreadkeeperTime(timestamp: number): string {
+  const delta = Date.now() - timestamp;
+  if (delta < 60_000) return "just now";
+  if (delta < 3_600_000) return `${Math.max(1, Math.floor(delta / 60_000))}m ago`;
+
+  return new Date(timestamp).toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function syncThreadkeeperVisibility() {
+  nextMoveTrigger?.classList.add("visible");
+  threadkeeperDock?.classList.toggle("visible", threadkeeperOpen && Boolean(latestThreadkeeperCard));
+}
+
+function clearThreadkeeperAutoCloseTimer() {
+  if (threadkeeperAutoCloseTimer !== null) {
+    window.clearTimeout(threadkeeperAutoCloseTimer);
+    threadkeeperAutoCloseTimer = null;
+  }
+}
+
+function scheduleThreadkeeperAutoClose(delay = 6500) {
+  clearThreadkeeperAutoCloseTimer();
+  if (threadkeeperSticky || !threadkeeperOpen) return;
+  threadkeeperAutoCloseTimer = window.setTimeout(() => {
+    setThreadkeeperOpen(false);
+  }, delay);
+}
+
+function setThreadkeeperOpen(open: boolean, sticky = false) {
+  threadkeeperOpen = open;
+  threadkeeperSticky = open ? sticky : false;
+  if (!open) {
+    clearThreadkeeperAutoCloseTimer();
+  }
+  syncThreadkeeperVisibility();
+}
+
+function pulseThreadkeeperShell() {
+  if (!threadkeeperShell) return;
+  threadkeeperShell.classList.remove("fresh");
+  nextMoveTrigger?.classList.remove("hot");
+  requestAnimationFrame(() => {
+    threadkeeperShell?.classList.add("fresh");
+    nextMoveTrigger?.classList.add("hot");
+    window.setTimeout(() => {
+      threadkeeperShell?.classList.remove("fresh");
+      if (!threadkeeperOpen) {
+        nextMoveTrigger?.classList.remove("hot");
+      }
+    }, 1800);
+  });
+}
+
+function setNextMoveTriggerLabel(text: string) {
+  if (!nextMoveTriggerLabelEl) return;
+  nextMoveTriggerLabelEl.textContent = "Next";
+}
+
+function setThreadkeeperSectionVisible(target: HTMLElement | null, visible: boolean) {
+  const section = target?.closest(".threadkeeper-section") as HTMLElement | null;
+  if (section) {
+    section.style.display = visible ? "" : "none";
+  }
+}
+
+async function refreshThreadkeeperCard(options: { open?: boolean; sticky?: boolean } = {}) {
+  try {
+    const res = await fetch(`${API_BASE}/api/threadkeeper-card`);
+    if (!res.ok) return;
+    const payload = await res.json();
+    if (!payload?.card) return;
+    renderThreadkeeperCard(payload.card as ThreadkeeperCard);
+    if (options.open) {
+      setThreadkeeperOpen(true, options.sticky ?? true);
+    }
+  } catch {
+    // backend may still be booting
+  }
+}
+
+function renderThreadkeeperActions(actions: ThreadkeeperAction[]) {
+  if (!threadkeeperActionsEl) return;
+
+  threadkeeperActionsEl.innerHTML = "";
+  for (const [index, action] of actions.entries()) {
+    const btn = document.createElement("button");
+    btn.className = `threadkeeper-action-btn ${index === 0 ? "primary" : "secondary"}`;
+    btn.textContent = action.label;
+    btn.addEventListener("click", () => {
+      runThreadkeeperAction(action);
+    });
+    threadkeeperActionsEl.appendChild(btn);
+  }
+}
+
+function renderThreadkeeperPills(target: HTMLElement | null, items: string[], variant: "default" | "avoid" = "default") {
+  if (!target) return;
+  target.innerHTML = items
+    .map((item) => `<div class="threadkeeper-detail-pill${variant === "avoid" ? " avoid" : ""}">${escapeHtml(item)}</div>`)
+    .join("");
+}
+
+function renderThreadkeeperCard(card: ThreadkeeperCard) {
+  const hadCard = Boolean(latestThreadkeeperCard);
+  latestThreadkeeperCard = card;
+  syncThreadkeeperVisibility();
+
+  if (!threadkeeperShell || !threadkeeperSummaryEl || !threadkeeperMetaEl || !threadkeeperTimeEl || !threadkeeperFocusEl || !threadkeeperTasksEl || !threadkeeperAvoidEl || !threadkeeperPanelTitleEl) {
+    return;
+  }
+
+  const nextMove = card.nextMove ?? card.summary;
+  const whyNow = card.whyNow ?? card.focus;
+  const tasks = Array.isArray(card.tasks) && card.tasks.length > 0 ? card.tasks : card.details.slice(0, 3);
+  const avoid = Array.isArray(card.avoid) ? card.avoid : [];
+  const actions = Array.isArray(card.actions) ? card.actions : [];
+  const urgency = card.urgency ?? (card.accent === "terminal" ? "high" : "medium");
+  const showFocus = Boolean(card.focus) && !/marginalia|\.pdf|\.ppt|\.pptx|\.key/i.test(card.focus);
+
+  threadkeeperShell.dataset.urgency = urgency;
+  nextMoveTrigger?.setAttribute("data-urgency", urgency);
+  nextMoveTrigger?.setAttribute("title", nextMove);
+  setNextMoveTriggerLabel(nextMove);
+  threadkeeperSummaryEl.textContent = nextMove;
+  threadkeeperMetaEl.textContent = whyNow;
+  threadkeeperTimeEl.textContent = formatThreadkeeperTime(card.timestamp);
+  threadkeeperPanelTitleEl.textContent = card.title || "What Now";
+  threadkeeperFocusEl.textContent = `当前上下文: ${card.focus}`;
+  threadkeeperFocusEl.style.display = showFocus ? "" : "none";
+
+  renderThreadkeeperPills(threadkeeperTasksEl, tasks);
+  renderThreadkeeperPills(threadkeeperAvoidEl, avoid, "avoid");
+  renderThreadkeeperActions(actions);
+  setThreadkeeperSectionVisible(threadkeeperTasksEl, tasks.length > 0);
+  setThreadkeeperSectionVisible(threadkeeperAvoidEl, avoid.length > 0);
+
+  pulseThreadkeeperShell();
+
+  if (urgency === "high") {
+    setThreadkeeperOpen(true, false);
+    scheduleThreadkeeperAutoClose();
+  } else {
+    syncThreadkeeperVisibility();
+  }
+}
+
+function runThreadkeeperAction(action: ThreadkeeperAction) {
+  if (action.agentId) {
+    switchAgent(action.agentId);
+  }
+
+  const input = document.getElementById("inputField") as HTMLInputElement | null;
+  if (input && action.prompt) {
+    input.value = action.prompt;
+    input.focus();
+    input.setSelectionRange(input.value.length, input.value.length);
+  } else {
+    input?.focus();
+  }
+
+  nextMoveTrigger?.classList.remove("hot");
+  setThreadkeeperOpen(false);
 }
 
 // ── Chat message rendering ───────────────────────────────────────
@@ -378,15 +577,27 @@ function handleTerminalEvent(eventType: string, data: any) {
   const summary: string = data.summary || data.prompt || "...";
 
   const tab = ensureTab(termId, data.source, data.name, data.command);
+  const seq = Number(data.eventSeq ?? 0);
+  if (seq > 0 && seq <= tab.lastEventSeq) {
+    return;
+  }
+  if (seq > 0) {
+    tab.lastEventSeq = seq;
+  }
   tab.lastEvent = data;
+  if (data.command) {
+    tab.command = data.command;
+    tab.label = extractLabel(data.command);
+  }
 
   if (terminalTabs.size === 1 && !activeTabId) {
     switchTab(termId);
   }
 
-  notifyTerminalAlert(src, summary);
-
   const isAlert = eventType === "terminal_alert";
+  if (isAlert) {
+    notifyTerminalAlert(src, summary);
+  }
   const div = document.createElement("div");
   div.className = isAlert ? "msg-terminal-alert" : "msg-terminal-completed";
   div.dataset.eventSeq = String(data.eventSeq ?? "");
@@ -429,7 +640,11 @@ function updateTerminalEvent(data: any) {
 
 function handleTerminalList(terminals: any[]) {
   for (const t of terminals) {
-    ensureTab(t.id, t.source, t.name, t.command);
+    const tab = ensureTab(t.id, t.source, t.name, t.command);
+    if (t.command && t.command !== tab.command) {
+      tab.command = t.command;
+      tab.label = extractLabel(t.command);
+    }
   }
   if (terminalTabs.size > 0 && !activeTabId) {
     switchTab(terminalTabs.keys().next().value!);
@@ -609,6 +824,92 @@ function stopTerminalMonitor() {
   }
 }
 
+// ── Threadkeeper SSE ─────────────────────────────────────────────
+
+let threadkeeperEventSource: EventSource | null = null;
+
+function startThreadkeeperMonitor() {
+  if (threadkeeperEventSource) return;
+
+  const evtSource = new EventSource(`${API_BASE}/api/threadkeeper-events`);
+  threadkeeperEventSource = evtSource;
+
+  evtSource.onmessage = (e) => {
+    try {
+      const event = JSON.parse(e.data);
+      if (event.type === "threadkeeper_card" && event.data) {
+        renderThreadkeeperCard(event.data as ThreadkeeperCard);
+      }
+    } catch { /* skip */ }
+  };
+
+  evtSource.onerror = () => {
+    evtSource.close();
+    if (threadkeeperEventSource === evtSource) {
+      threadkeeperEventSource = null;
+      setTimeout(startThreadkeeperMonitor, 5000);
+    }
+  };
+}
+
+function setupThreadkeeperDock() {
+  nextMoveTrigger = document.getElementById("nextMoveTrigger") as HTMLButtonElement | null;
+  nextMoveTriggerLabelEl = document.getElementById("nextMoveTriggerLabel");
+  threadkeeperDock = document.getElementById("threadkeeperDock");
+  threadkeeperShell = document.getElementById("threadkeeperShell");
+  threadkeeperSummaryEl = document.getElementById("threadkeeperSummary");
+  threadkeeperMetaEl = document.getElementById("threadkeeperMeta");
+  threadkeeperTimeEl = document.getElementById("threadkeeperTime");
+  threadkeeperFocusEl = document.getElementById("threadkeeperFocus");
+  threadkeeperTasksEl = document.getElementById("threadkeeperTasks");
+  threadkeeperAvoidEl = document.getElementById("threadkeeperAvoid");
+  threadkeeperActionsEl = document.getElementById("threadkeeperActions");
+  threadkeeperPanelTitleEl = document.getElementById("threadkeeperPanelTitle");
+  const close = document.getElementById("threadkeeperClose");
+
+  nextMoveTrigger?.addEventListener("click", (e) => {
+    e.stopPropagation();
+
+    if (threadkeeperOpen && threadkeeperSticky) {
+      nextMoveTrigger?.classList.remove("hot");
+      setThreadkeeperOpen(false);
+      return;
+    }
+
+    nextMoveTrigger?.classList.remove("hot");
+    void refreshThreadkeeperCard({ open: true, sticky: true });
+  });
+
+  close?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    setThreadkeeperOpen(false);
+  });
+
+  document.addEventListener("click", (e) => {
+    if (!threadkeeperOpen || !threadkeeperShell) return;
+    const target = e.target as Node;
+    if (threadkeeperShell.contains(target) || nextMoveTrigger?.contains(target)) {
+      return;
+    }
+    setThreadkeeperOpen(false);
+  });
+
+  threadkeeperShell?.addEventListener("mouseenter", () => {
+    if (threadkeeperOpen && !threadkeeperSticky) {
+      clearThreadkeeperAutoCloseTimer();
+    }
+  });
+
+  threadkeeperShell?.addEventListener("mouseleave", () => {
+    if (threadkeeperOpen && !threadkeeperSticky) {
+      scheduleThreadkeeperAutoClose(1800);
+    }
+  });
+
+  syncThreadkeeperVisibility();
+  void refreshThreadkeeperCard();
+}
+
 // ── Eye tracking: pupils follow the mouse ────────────────────────
 
 function setupEyeTracking() {
@@ -706,6 +1007,7 @@ function setupDragRegion() {
   });
 }
 
+
 // ── Initialize ───────────────────────────────────────────────────
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -715,6 +1017,8 @@ document.addEventListener("DOMContentLoaded", () => {
   setupBlink();
   setupRobotClick();
   setupDragRegion();
+  setupThreadkeeperDock();
+  startThreadkeeperMonitor();
   fetchAgentList();
 
   document.getElementById("agentBadge")!.addEventListener("click", (e) => {
@@ -741,10 +1045,6 @@ document.addEventListener("DOMContentLoaded", () => {
       const text = inputField.value.trim();
       if (text) { inputField.value = ""; sendMessage(text); }
     }
-  });
-
-  document.getElementById("replyCancelBtn")!.addEventListener("click", () => {
-    exitReplyMode();
   });
 
   document.getElementById("resetBtn")!.addEventListener("click", async () => {

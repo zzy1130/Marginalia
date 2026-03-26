@@ -1,6 +1,6 @@
 """Insert formatted study notes into PDF/PPTX files.
 
-Companion script for the insert-notes skill.
+Helper script for the insert-notes skill.
 Called by the LLM via run_code.
 """
 

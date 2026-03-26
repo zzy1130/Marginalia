@@ -1,6 +1,6 @@
 # Marginalia
 
-A macOS desktop learning companion that sees your PDF/PPT slides, answers questions about them, and writes study notes back into the original file.
+A macOS desktop learning agent that sees your PDF/PPT slides, answers questions about them, and writes study notes back into the original file.
 
 ## What It Does
 

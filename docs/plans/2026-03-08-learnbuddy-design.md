@@ -2,7 +2,7 @@
 
 ## Problem
 Self-studying from PDF/PPT slides requires 3 tedious steps: screenshot → ask AI → save notes.
-Need a unified companion that sees the current page, answers questions, and writes notes back.
+Need a unified desktop agent that sees the current page, answers questions, and writes notes back.
 
 ## Solution
 A macOS floating desktop app powered by Claude Agent SDK that:

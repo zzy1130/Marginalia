@@ -14,6 +14,11 @@ interface AgentEntry {
   id: string;
   name: string;
   description: string;
+  runtime?: {
+    mode?: "interactive" | "ambient";
+    visible_in_chat?: boolean;
+    auto_select?: boolean;
+  };
   context_match?: {
     app_names?: string[];
     file_types?: string[];
@@ -21,6 +26,18 @@ interface AgentEntry {
 }
 
 let agentCache: AgentEntry[] | null = null;
+
+function isInteractiveAgent(agent: AgentEntry): boolean {
+  return agent.runtime?.mode !== "ambient";
+}
+
+function isVisibleInChat(agent: AgentEntry): boolean {
+  return isInteractiveAgent(agent) && agent.runtime?.visible_in_chat !== false;
+}
+
+function canAutoSelect(agent: AgentEntry): boolean {
+  return isInteractiveAgent(agent) && agent.runtime?.auto_select !== false;
+}
 
 export function discoverAgents(): AgentEntry[] {
   if (agentCache) return agentCache;
@@ -41,6 +58,7 @@ export function discoverAgents(): AgentEntry[] {
         id: dir,
         name: meta.name ?? dir,
         description: meta.description ?? "",
+        runtime: meta.runtime,
         context_match: meta.context_match,
       });
     } catch (err) {
@@ -54,7 +72,7 @@ export function discoverAgents(): AgentEntry[] {
 }
 
 export function selectAgent(appName?: string, fileName?: string): string {
-  const agents = discoverAgents();
+  const agents = discoverAgents().filter(canAutoSelect);
 
   if (appName) {
     for (const agent of agents) {
@@ -73,9 +91,12 @@ export function selectAgent(appName?: string, fileName?: string): string {
     }
   }
 
-  return "pdf_study";
+  const fallback = agents.find((agent) => agent.id === "pdf_study") ?? agents[0];
+  return fallback?.id ?? "pdf_study";
 }
 
 export function listAgents(): { id: string; name: string; description: string }[] {
-  return discoverAgents().map(({ id, name, description }) => ({ id, name, description }));
+  return discoverAgents()
+    .filter(isVisibleInChat)
+    .map(({ id, name, description }) => ({ id, name, description }));
 }

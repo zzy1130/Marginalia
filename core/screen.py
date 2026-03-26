@@ -14,6 +14,87 @@ _DOC_APPS = {"Preview", "预览", "Microsoft PowerPoint", "Keynote", "Adobe Acro
 # File extensions we care about
 _DOC_EXTENSIONS = (".pdf", ".pptx", ".ppt", ".key")
 
+_SKIP_WINDOW_OWNERS = {
+    "Dock",
+    "Notification Center",
+    "Spotlight",
+    "Window Server",
+    "Control Center",
+    "loginwindow",
+}
+
+
+def _empty_window_info(status: str, reason: Optional[str] = None) -> dict:
+    return {
+        "app_name": "",
+        "title": "",
+        "window_id": None,
+        "pid": 0,
+        "status": status,
+        "reason": reason,
+    }
+
+
+def _copy_window_list(option_flags: int):
+    try:
+        from Quartz import CGWindowListCopyWindowInfo, kCGNullWindowID
+    except Exception as e:
+        return None, f"quartz_import_failed:{type(e).__name__}"
+
+    try:
+        window_list = CGWindowListCopyWindowInfo(option_flags, kCGNullWindowID)
+    except Exception as e:
+        return None, f"window_list_error:{type(e).__name__}"
+
+    if window_list is None:
+        return None, "window_list_unavailable"
+    return list(window_list), None
+
+
+def _window_info_from_raw(window: dict, status: str = "ok", reason: Optional[str] = None) -> dict:
+    return {
+        "app_name": window.get("kCGWindowOwnerName", "") or "",
+        "title": window.get("kCGWindowName", "") or "",
+        "window_id": window.get("kCGWindowNumber"),
+        "pid": window.get("kCGWindowOwnerPID", 0),
+        "status": status,
+        "reason": reason,
+    }
+
+
+def get_frontmost_window_info() -> dict:
+    """Return the frontmost visible application window."""
+    from Quartz import (
+        kCGWindowListExcludeDesktopElements,
+        kCGWindowListOptionOnScreenOnly,
+    )
+
+    my_pid = os.getpid()
+    window_list, reason = _copy_window_list(
+        kCGWindowListOptionOnScreenOnly | kCGWindowListExcludeDesktopElements,
+    )
+    if window_list is None:
+        return _empty_window_info("unavailable", reason)
+
+    for window in window_list:
+        pid = window.get("kCGWindowOwnerPID", 0)
+        if pid == my_pid:
+            continue
+        if window.get("kCGWindowLayer", -1) != 0:
+            continue
+
+        app_name = window.get("kCGWindowOwnerName", "") or ""
+        if not app_name or app_name in _SKIP_WINDOW_OWNERS:
+            continue
+
+        bounds = window.get("kCGWindowBounds") or {}
+        if bounds.get("Width", 0) <= 0 or bounds.get("Height", 0) <= 0:
+            continue
+
+        return _window_info_from_raw(window)
+
+    return _empty_window_info("no_window")
+
 
 def get_document_window_info() -> dict:
     """Find the most relevant document viewer window, skipping our own app.
@@ -23,18 +104,17 @@ def get_document_window_info() -> dict:
     Falls back to the most recent non-self window with a document title.
     """
     from Quartz import (
-        CGWindowListCopyWindowInfo,
         kCGWindowListExcludeDesktopElements,
         kCGWindowListOptionOnScreenOnly,
-        kCGNullWindowID,
     )
 
     my_pid = os.getpid()
 
-    window_list = CGWindowListCopyWindowInfo(
+    window_list, reason = _copy_window_list(
         kCGWindowListOptionOnScreenOnly | kCGWindowListExcludeDesktopElements,
-        kCGNullWindowID,
     )
+    if window_list is None:
+        return _empty_window_info("unavailable", reason)
 
     best = None
     fallback = None
@@ -58,6 +138,8 @@ def get_document_window_info() -> dict:
                     "title": title,
                     "window_id": window_id,
                     "pid": pid,
+                    "status": "ok",
+                    "reason": None,
                 }
 
         # Priority 2: any window whose title contains a doc filename
@@ -67,6 +149,8 @@ def get_document_window_info() -> dict:
                 "title": title,
                 "window_id": window_id,
                 "pid": pid,
+                "status": "ok",
+                "reason": None,
             }
 
     if best:
@@ -74,12 +158,7 @@ def get_document_window_info() -> dict:
     if fallback:
         return fallback
 
-    return {
-        "app_name": "",
-        "title": "",
-        "window_id": None,
-        "pid": 0,
-    }
+    return _empty_window_info("no_document")
 
 
 def capture_window(window_id: int, output_path: Optional[str] = None) -> str:
@@ -245,6 +324,8 @@ def get_document_context() -> dict:
         page_text = extract_page_text(file_path, page_num)
 
     return {
+        "status": win.get("status", "ok"),
+        "reason": win.get("reason"),
         "app_name": win["app_name"],
         "title": win["title"],
         "window_id": win["window_id"],

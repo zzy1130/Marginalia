@@ -12,3 +12,4 @@ node_modules/
 bun.lock
 .DS_Store
 .claude/
+.threadkeeper_state.json

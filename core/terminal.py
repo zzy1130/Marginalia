@@ -39,20 +39,70 @@ NEEDS_INPUT_PATTERNS = [
 ]
 
 AI_INDICATORS = [
-    "claude", "cursor", "aider", "copilot", "codex",
-    "anthropic", "openai", "agent", "cline", "windsurf",
-    "pi", "gemini", "gpt", "llm", "chatgpt", "deepseek",
+    "claude", "aider", "copilot", "codex", "cline", "windsurf",
+    "anthropic", "openai", "chatgpt", "gemini", "deepseek",
     "qwen", "dashscope", "bailian",
+]
+
+SELF_MONITOR_MARKERS = [
+    "[terminal-poll",
+    "[threadkeeper]",
+    "[summarize]",
+    "[push] terminal_",
+    "[server] listening on http://127.0.0.1:8765",
+    "[server] terminal polling every",
+    "[server] threadkeeper polling every",
+    "[main] marginalia started",
+    "terminal_script=",
+    "venv_python=",
+]
+
+IGNORE_PROMPT_LINE_MARKERS = [
+    "[terminal-poll",
+    "[threadkeeper]",
+    "[summarize]",
+    "[push] terminal_",
+    "summary ready:",
+    "requesting summary",
+    "calling http",
+    "[server]",
 ]
 
 
 def _is_ai_terminal(content: str, command: str = "") -> bool:
-    check = command.lower()
-    return any(ind in check for ind in AI_INDICATORS)
+    snippets = [command.lower()]
+    if content:
+        snippets.append(content.lower()[-2000:])
+    haystack = "\n".join(snippets)
+    return any(ind in haystack for ind in AI_INDICATORS)
+
+
+def _is_self_monitor_terminal(term: dict) -> bool:
+    command = (term.get("command", "") or "").lower()
+    cwd = str(term.get("cwd", "") or "").strip('"').lower()
+    project = (term.get("project", "") or term.get("name", "") or "").lower()
+    content = (term.get("content", "") or "").lower()
+
+    in_project = "learnbuddy" in cwd or "learnbuddy" in project
+    has_monitor_signal = "./start.sh" in command or any(marker in content for marker in SELF_MONITOR_MARKERS)
+    return bool(in_project and has_monitor_signal)
+
+
+def _meaningful_lines(content: str) -> list:
+    lines = []
+    for raw in content.strip().split("\n"):
+        line = raw.strip()
+        if not line:
+            continue
+        lower = line.lower()
+        if any(marker in lower for marker in IGNORE_PROMPT_LINE_MARKERS):
+            continue
+        lines.append(line)
+    return lines
 
 
 def _needs_input(content: str) -> tuple:
-    lines = content.strip().split("\n")
+    lines = _meaningful_lines(content)
     tail = "\n".join(lines[-15:])
 
     for pattern in NEEDS_INPUT_PATTERNS:
@@ -267,14 +317,22 @@ def get_all_status() -> list:
     for term in all_terminals:
         content = term.get("content", "")
         command = term.get("command", "")
+        term["cwd"] = str(term.get("cwd", "") or "").strip('"')
+
+        if _is_self_monitor_terminal(term):
+            term["needs_input"] = False
+            term["is_ai"] = False
+            term["prompt"] = ""
+            lines = [l for l in content.strip().split("\n") if l.strip()]
+            term["tail"] = "\n".join(lines[-60:])
+            term["name"] = term.get("name", term.get("project", ""))
+            continue
 
         is_ai = _is_ai_terminal(content, command)
-        is_cursor_active = term.get("source") == "cursor" and term.get("active")
-
         waiting, prompt_line = _needs_input(content)
-        term["needs_input"] = bool(waiting and (is_ai or is_cursor_active))
+        term["needs_input"] = bool(waiting and is_ai and term.get("active"))
         term["is_ai"] = is_ai
-        term["prompt"] = prompt_line if waiting else ""
+        term["prompt"] = prompt_line if term["needs_input"] else ""
 
         lines = [l for l in content.strip().split("\n") if l.strip()]
         term["tail"] = "\n".join(lines[-60:])
@@ -310,6 +368,9 @@ end tell
 '''
         try:
             r = subprocess.run(["osascript", "-e", script], capture_output=True, text=True, timeout=5)
+            if r.returncode != 0:
+                err = r.stderr.strip() or r.stdout.strip() or "osascript_failed"
+                return f"error: {err}"
             return r.stdout.strip() or "ok"
         except Exception as e:
             return f"error: {e}"
@@ -332,6 +393,9 @@ end tell
 '''
         try:
             r = subprocess.run(["osascript", "-e", script], capture_output=True, text=True, timeout=5)
+            if r.returncode != 0:
+                err = r.stderr.strip() or r.stdout.strip() or "osascript_failed"
+                return f"error: {err}"
             return "ok"
         except Exception as e:
             return f"error: {e}"

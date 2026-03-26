@@ -15,6 +15,11 @@ export interface AgentMeta {
   name: string;
   description?: string;
   model?: string;
+  runtime?: {
+    mode?: "interactive" | "ambient";
+    visible_in_chat?: boolean;
+    auto_select?: boolean;
+  };
   context_match?: {
     app_names?: string[];
     file_types?: string[];
@@ -28,14 +33,21 @@ export interface AgentMeta {
     network_egress?: string[] | boolean;
     file_write?: string[] | boolean;
   };
+  base_prompt: string;
   system_prompt: string;
 }
 
-let agentCache: AgentMeta | null = null;
-let agentCacheId: string | null = null;
+export interface LoadAgentOptions {
+  includeSkills?: boolean;
+}
 
-export function loadAgent(agentId: string = "pdf_study"): AgentMeta {
-  if (agentCache && agentCacheId === agentId) return agentCache;
+const agentCache = new Map<string, AgentMeta>();
+
+export function loadAgent(agentId: string = "pdf_study", options: LoadAgentOptions = {}): AgentMeta {
+  const includeSkills = options.includeSkills ?? true;
+  const cacheKey = `${agentId}:${includeSkills ? "with-skills" : "base-only"}`;
+  const cached = agentCache.get(cacheKey);
+  if (cached) return cached;
 
   const agentPath = join(AGENTS_DIR, agentId, "AGENT.md");
   const text = readFileSync(agentPath, "utf-8");
@@ -47,16 +59,18 @@ export function loadAgent(agentId: string = "pdf_study"): AgentMeta {
 
   const meta = yaml.load(parts[1]) as Record<string, unknown>;
   const basePrompt = parts[2].trim();
-  const skillsText = loadAgentSkills(join(AGENTS_DIR, agentId));
+  const skillsText = includeSkills ? loadAgentSkills(join(AGENTS_DIR, agentId)) : "";
 
   const result: AgentMeta = {
     ...(meta as any),
-    system_prompt: basePrompt + skillsText,
+    base_prompt: basePrompt,
+    system_prompt: (basePrompt + skillsText).trim(),
   };
 
-  console.log(`[kernel] Loaded agent: ${result.name} (${agentId}), tools: [${(result.tools ?? []).join(", ")}]`);
-  agentCache = result;
-  agentCacheId = agentId;
+  console.log(
+    `[kernel] Loaded agent: ${result.name} (${agentId}), mode=${result.runtime?.mode ?? "interactive"}, skills=${includeSkills ? "on" : "off"}, tools=[${(result.tools ?? []).join(", ")}]`,
+  );
+  agentCache.set(cacheKey, result);
   return result;
 }
 

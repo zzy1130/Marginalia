@@ -10,7 +10,7 @@ When the user asks you to take notes, insert notes, or add annotations to their 
 
 ## How it works
 
-Call the companion script `insert_notes.py` via `run_code`. Fill in three variables:
+Call the helper script `insert_notes.py` via `run_code`. Fill in three variables:
 
 - `markdown_content` — your notes in Markdown format (supports headings, bold, lists, tables, blockquotes, LaTeX math with `$...$` and `$$...$$`)
 - `file_path` — absolute path from the document context
